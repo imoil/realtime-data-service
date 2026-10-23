@@ -116,39 +116,29 @@
 
 ## **6\. 권장 노드 구성도 (Topology & Data Flow Architecture)**
 
-전체 시스템의 데이터 흐름과 네트워크 토폴로지 구성은 다음과 같습니다.  
-`[ Edge IoT Gateways ] (5,000,000 rows/sec)`  
-         `│`  
-         `▼ (Protobuf / TCP)`  
-`┌────────────────────────────────────────────────────────┐`  
-`│               Apache Kafka Cluster (6 Nodes)           │`  
-`│           (KRaft Mode, 128 Partitions Topic)           │`  
-`└────────────────────────────────────────────────────────┘`  
-         `│`  
-         `├────────────────────────────────────────┐ (Consumer Stream)`  
-         `▼                                        ▼`  
-`┌───────────────────────────────┐        ┌───────────────────────────────┐`  
-`│  Apache Flink Cluster         │        │  ClickHouse Cluster (3 Nodes) │`  
-`│  (Iceberg Parquet Sink Writer)│        │  (Null Buffer + Rollup MV)    │`  
-`└──────────────┬────────────────┘        └──────────────┬────────────────┘`  
-               `│                                        │`  
-               `▼ (ZSTD Parquet / 256MB Files)           │ (AggregatingMergeTree)`  
-`┌───────────────────────────────┐                       │ (1m / 1h Rollups)`  
-`│ Internal S3 (RustFS / Ceph)   │◄──────────────────────┘`  
-`│ (Monthly Net Growth: ~35.36TB)│    (Iceberg Table Engine / Byte-Range Scan)`  
-`└───────────────────────────────┘                      ▲`  
-               `▲                                       │`  
-               `│ (Direct Parquet Scan via S3 API)      │`  
-               `└─────────────────── ┌──────────────────┴──────────┐`  
-                                    `│ Spring Boot API (Java 21)   │`  
-                                    `│ (Dynamic Router & Stream)   │`  
-                                    `└──────────────┬──────────────┘`  
-                                                   `│`  
-                                                   `▼ (FORMAT ArrowStream - Zero-Copy)`  
-                                    `┌───────────────────────────────┐`  
-                                    `│ Vue 3 Frontend                │`  
-                                    `│ (@uwdata/flechette + LC JS)   │`  
-                                    `└───────────────────────────────┘`
+전체 시스템의 데이터 흐름과 네트워크 토폴로지 구성은 다음과 같습니다.
+
+```mermaid
+flowchart TD
+    Edge["Edge IoT Gateways\n(5,000,000 rows/sec)"]
+    Kafka["Apache Kafka Cluster (6 Nodes)\n(KRaft Mode, 128 Partitions Topic)"]
+    Flink["Apache Flink Cluster\n(Iceberg Parquet Sink Writer)"]
+    ClickHouse["ClickHouse Cluster (3 Nodes)\n(Null Buffer + Rollup MV)"]
+    S3[("Internal S3 (RustFS / Ceph)\n(Monthly Net Growth: ~35.36TB)")]
+    SpringBoot["Spring Boot API (Java 21)\n(Dynamic Router & Stream)"]
+    Frontend["Vue 3 Frontend\n(@uwdata/flechette + LC JS)"]
+
+    Edge -->|"Protobuf / TCP"| Kafka
+    Kafka -->|"Consumer Stream"| Flink
+    Kafka -->|"Consumer Stream"| ClickHouse
+
+    Flink -->|"ZSTD Parquet / 256MB Files"| S3
+    ClickHouse -.->|"Iceberg Table Engine / Byte-Range Scan"| S3
+
+    ClickHouse -->|"AggregatingMergeTree (1m / 1h Rollups)"| SpringBoot
+    S3 -.->|"Direct Parquet Scan via S3 API"| SpringBoot
+    SpringBoot -->|"FORMAT ArrowStream - Zero-Copy"| Frontend
+```
 
 ## **7\. 기대 효과 및 운영 시 주의사항 (Consequences & Risks)**
 
