@@ -142,3 +142,7 @@ flowchart TD
 59. gh issue close 15 --comment "Completed Kafka-to-WebSocket dynamic live tail bridge with O(1) early filter and virtual thread dispatch"
 60. /retro
 61. /clear
+62. /poteto-mode #16 티켓 구현해
+63. gh issue close 16 --comment "Completed Full-Stack Docker Sandbox Environment & Smoke Verification"
+64. /retro
+65. gh issue close 12 --comment "Completed Spec 003: Production Infrastructure Binding & Live Cluster Readiness"
