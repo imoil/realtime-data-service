@@ -8,22 +8,26 @@ import java.util.List;
 /**
  * ClickHouse & Arrow IPC implementation of TelemetryStorageEngine.
  *
- * Coordinates query routing, AM4 / raw data retrieval, and binary Arrow IPC streaming.
+ * Coordinates query routing, live ClickHouse binary pass-through streaming,
+ * and fallback mock generation for isolated testing.
  */
 @Service
 public class ClickHouseArrowStorageEngine implements TelemetryStorageEngine {
 
     private final TelemetryQueryRouter queryRouter;
     private final ClickHouseTelemetryService telemetryService;
+    private final ClickHouseClientService clickHouseClientService;
     private final ArrowStreamWriterService arrowWriterService;
 
     public ClickHouseArrowStorageEngine(
             TelemetryQueryRouter queryRouter,
             ClickHouseTelemetryService telemetryService,
+            ClickHouseClientService clickHouseClientService,
             ArrowStreamWriterService arrowWriterService
     ) {
         this.queryRouter = queryRouter;
         this.telemetryService = telemetryService;
+        this.clickHouseClientService = clickHouseClientService;
         this.arrowWriterService = arrowWriterService;
     }
 
@@ -35,18 +39,30 @@ public class ClickHouseArrowStorageEngine implements TelemetryStorageEngine {
                 request.width()
         );
 
-        List<Am4DataPoint> points = telemetryService.getAm4Telemetry(
-                routing.sensorIds(),
-                routing.timeRange(),
-                routing.width()
-        );
+        String queryMode = routing.isRaw() ? "raw" : "am4";
 
         StreamingResponseBody responseBody = outputStream -> {
-            arrowWriterService.writeDataPoints(points, outputStream);
-            outputStream.flush();
+            boolean streamed = false;
+            if (clickHouseClientService.isEnabled()) {
+                streamed = clickHouseClientService.streamDirectArrow(routing.sqlQuery(), outputStream);
+            }
+
+            if (!streamed) {
+                // Fallback / mock mode (unit tests & local mode without ClickHouse daemon)
+                List<Am4DataPoint> points = telemetryService.getAm4Telemetry(
+                        routing.sensorIds(),
+                        routing.timeRange(),
+                        routing.width()
+                );
+                arrowWriterService.writeDataPoints(points, outputStream);
+                outputStream.flush();
+            }
         };
 
-        String queryMode = routing.isRaw() ? "raw" : "am4";
-        return new TelemetryStreamResult(responseBody, routing.targetTable(), queryMode, points.size());
+        int estimatedRows = routing.isRaw()
+                ? (int) (routing.timeRange().durationSec() + 1) * routing.sensorIds().size()
+                : routing.width() * 4 * routing.sensorIds().size();
+
+        return new TelemetryStreamResult(responseBody, routing.targetTable(), queryMode, estimatedRows);
     }
 }
