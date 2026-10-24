@@ -110,3 +110,5 @@ flowchart TD
 38. gh issue close 10 --comment "Completed headless useTelemetryDashboard deep composable (commit eddbd06)"
 39. /clear
 40. /implement #11
+41. gh issue close 11 --comment "Completed fixed-budget circular ring buffer pooling with strict memory ceiling (commit ac5e4cd)"
+42. /retro
