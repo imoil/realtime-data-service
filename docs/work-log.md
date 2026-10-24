@@ -60,9 +60,7 @@ flowchart TD
     T3 -->|Blocks| T5
     T4 -->|Blocks| T5
 
-    classDef frontier fill:#238636,stroke:#2ea043,color:#fff,font-weight:bold;
-    classDef blocked fill:#21262d,stroke:#30363d,color:#8b949e;
-```
+    classDef frontier fill:#238636,stroke:#2ea043,color:#fff,font-weight:bold;\n    classDef blocked fill:#21262d,stroke:#30363d,color:#8b949e;\n```
 6. /ask-matt 티켓을 모두 생성했다면, 컨텍스트를 clear 해도 되나?
 7. /clear
 8. /implement #2
@@ -112,3 +110,50 @@ flowchart TD
 42. /retro
 43. /clear
 44. /diagram-design
+```mermaid
+flowchart LR
+    subgraph Tier1["1. Ingestion & Streaming Tier"]
+        Sensors["50 Industrial Sensors<br/>(High-Frequency Ticks)"] --> Kafka["Kafka Topic<br/>(Protobuf Format)"]
+        Kafka --> Flink["Apache Flink<br/><b>TelemetryPipelineTopology</b><br/><i>1x Deserialization & Watermark</i>"]
+    end
+
+    subgraph Tier2["2. Hybrid Dual-Tier Storage"]
+        Flink -->|Parquet Append| Iceberg["Apache Iceberg Lakehouse<br/><b>bucket(32, sensor_id)</b><br/><i>(S3/MinIO Cold Raw Archive)</i>"]
+        Flink -->|1m Rollup| CH_1m["ClickHouse Warm Tier<br/><b>telemetry_rollup_1m</b><br/><i>(SummingMergeTree · 8-Scalar)</i>"]
+        Flink -->|1h Rollup| CH_1h["ClickHouse Macro Tier<br/><b>telemetry_rollup_1h</b><br/><i>(30-Day Overview Outline)</i>"]
+    end
+
+    subgraph Tier3["3. Gateway & Storage Engine (Deep Seam)"]
+        Iceberg -.->|Parquet Micro-Scan| Engine
+        CH_1m -->|Warm Query| Engine
+        CH_1h -->|Macro Query| Engine
+        
+        Engine["Spring Boot Gateway<br/><b>TelemetryStorageEngine</b><br/>━━━━━━━━━━━━━<br/>• Single-Pass AM4 Downsampling<br/>• DuckDB Parquet Micro-Scans<br/>• Binary Arrow IPC Serializer"]
+        
+        Kafka -.->|Sub-second Ticks| WsHandler["WebSocket Handler<br/><b>/ws/v1/telemetry/live</b>"]
+    end
+
+    subgraph Tier4["4. WebGL Visualization & Memory Pool"]
+        Engine ===>|Binary Arrow Stream<br/>(HTTP Chunked)| UTD
+        WsHandler -.->|Live Tick Stream| UTD
+        
+        UTD["Headless Coordinator<br/><b>useTelemetryDashboard</b><br/>━━━━━━━━━━━━━<br/>• 120ms Debounced Zoom<br/>• isProgrammaticUpdate Guard<br/>• Flechette Zero-Copy Reader"]
+        
+        UTD <-->|FIFO Eviction<br/>Cap: 10,000 pts| RingBuf["Memory Ceiling ≤ 7.63 MB<br/><b>CircularTelemetryBufferPool</b><br/><i>(24/7 Zero GC Frame Drops)</i>"]
+        
+        UTD ===>|TypedArray Buffers| View["Vue 3 View Binder<br/><b>TelemetryChart.vue</b><br/><i>(LightningChart JS WebGL)</i>"]
+    end
+
+    classDef core fill:#bf4520,stroke:#8f3014,color:#fff,font-weight:bold;
+    classDef storage fill:#2d3142,stroke:#4f5d75,color:#fff;
+    classDef stream fill:#1f3d2b,stroke:#2ea043,color:#fff;
+    classDef live fill:#2e5aa8,stroke:#1d3a6d,color:#fff;
+    classDef view fill:#393e53,stroke:#5a6580,color:#fff;
+
+    class Engine,UTD core;
+    class Iceberg,CH_1m,CH_1h storage;
+    class Sensors,Kafka,Flink stream;
+    class WsHandler,RingBuf live;
+    class View view;
+```
+45. /clear
