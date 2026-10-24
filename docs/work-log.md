@@ -60,7 +60,9 @@ flowchart TD
     T3 -->|Blocks| T5
     T4 -->|Blocks| T5
 
-    classDef frontier fill:#238636,stroke:#2ea043,color:#fff,font-weight:bold;\n    classDef blocked fill:#21262d,stroke:#30363d,color:#8b949e;\n```
+    classDef frontier fill:#238636,stroke:#2ea043,color:#fff,font-weight:bold;
+    classDef blocked fill:#21262d,stroke:#30363d,color:#8b949e;
+```
 6. /ask-matt 티켓을 모두 생성했다면, 컨텍스트를 clear 해도 되나?
 7. /clear
 8. /implement #2
@@ -132,3 +134,4 @@ flowchart TD
 51. gh issue close 13 --comment "Completed ClickHouse live client, zero-copy Arrow pass-through and virtual threads (commit 5805707)"
 52. /retro
 53. /clear
+54. /implement #14
