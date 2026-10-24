@@ -1,0 +1,68 @@
+# Agent work log
+
+0. install skills
+  - matt-pocock skills
+  - diagram-design
+  - pstack
+1. initial skills
+  - /setup-matt-pocock-skills
+  - /setup-pstack
+2. /grill-me-with-docs @file:ADR.md
+3. /ask-matt
+```mermaid
+flowchart LR
+    Grill["1. /grill-with-docs\n(완료: ADR-001 확정)"]
+    Decision{"2. 세부 프로토타입\n검증 필요 여부"}
+    Proto["/prototype\n(Flechette/LC JS 등 투기적 검증)"]
+    Spec["3. /to-spec\n(대화 맥락을 스펙 문서로 합성)"]
+    Tickets["4. /to-tickets\n(Tracer-Bullet 태스크 그래프 분할)"]
+    Impl["5. /implement 또는 /implement-spec\n(TDD 기반 단계별 구현)"]
+
+    Grill --> Decision
+    Decision -->|"화면/스트림 검증 필요"| Proto
+    Decision -->|"바로 전체 구축 진행"| Spec
+    Proto --> Spec
+    Spec --> Tickets
+    Tickets --> Impl
+```
+4. /to-spec @file:ADR.md
+```mermaid
+flowchart LR
+    subgraph Seam1["Seam 1: Flink MiniCluster Job Seam"]
+        S1_In["Kafka Mock Source\n(Protobuf Records)"] --> FlinkJob["Flink Pipeline"]
+        FlinkJob --> S1_Out1["Mock S3 Iceberg Sink"]
+        FlinkJob --> S1_Out2["ClickHouse Rollup Sink"]
+    end
+
+    subgraph Seam2["Seam 2: Spring Boot API Gateway Seam (최상위 백엔드 심)"]
+        S2_In["HTTP GET /api/v1/telemetry/am4-arrow\nWS /ws/v1/telemetry/live"] --> SpringBoot["Spring Boot Router"]
+        SpringBoot --> S2_Out["Binary Arrow IPC Stream\n& WebSocket Ticks"]
+    end
+
+    subgraph Seam3["Seam 3: Frontend Composable Seam (최상위 프론트엔드 심)"]
+        S3_In["Raw ArrayBuffer Stream\n& WebSocket Payload"] --> Composable["useTelemetryStream"]
+        Composable --> S3_Out["TypedArray Memory View\n& WebGL Series Buffers"]
+    end
+```
+5. /to-tickets #1
+```mermaid
+flowchart TD
+    T1["#2 Ticket 1: Single-Sensor End-to-End Walking Skeleton\n(Frontier: 즉시 시작 가능)"]:::frontier
+    T2["#3 Ticket 2: Multi-Sensor 30-Day Macro AM4 Visualization"]:::blocked
+    T3["#5 Ticket 3: Cold Lakehouse Tiering & Micro-Zoom Parquet Scans"]:::blocked
+    T4["#4 Ticket 4: Sub-Second Live Telemetry via WebSocket Tail"]:::blocked
+    T5["#6 Ticket 5: Stream Resilience & Semantic Zoom Navigation"]:::blocked
+
+    T1 -->|Blocks| T2
+    T2 -->|Blocks| T3
+    T1 -->|Blocks| T4
+    T2 -->|Blocks| T5
+    T3 -->|Blocks| T5
+    T4 -->|Blocks| T5
+
+    classDef frontier fill:#238636,stroke:#2ea043,color:#fff,font-weight:bold;
+    classDef blocked fill:#21262d,stroke:#30363d,color:#8b949e;
+```
+6. /ask-matt 티켓을 모두 생성했다면, 컨텍스트를 clear 해도 되나?
+7. /clear
+8. /implement #2

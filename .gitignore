@@ -1,1 +1,11 @@
 .atlas/
+.gradle/
+build/
+**/build/
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+*.tsbuildinfo
+.DS_Store
+*.log

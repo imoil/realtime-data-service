@@ -1,0 +1,85 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { useTelemetryStream } from '../src/composables/useTelemetryStream';
+import { tableFromArrays, tableToIPC } from '@uwdata/flechette';
+
+describe('useTelemetryStream composable', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('decodes Apache Arrow IPC stream zero-copy into typed arrays', async () => {
+    // Prepare synthetic Arrow IPC buffer
+    const mockTable = tableFromArrays({
+      sensor_id: new Uint32Array([1, 1, 1, 1]),
+      ts_ms: new Float64Array([1000.0, 1015.0, 1045.0, 1059.0]),
+      val: new Float64Array([20.0, 12.0, 48.0, 21.0])
+    });
+    const ipcBuffer = tableToIPC(mockTable, { format: 'stream' });
+
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      headers: new Headers({
+        'Content-Type': 'application/vnd.apache.arrow.stream'
+      }),
+      arrayBuffer: async () => ipcBuffer!.buffer
+    });
+
+    const { fetchAm4Arrow, isLoading, error } = useTelemetryStream();
+
+    const batch = await fetchAm4Arrow({
+      sensorId: 1,
+      lbSec: 1,
+      ubSec: 2,
+      width: 1920
+    });
+
+    expect(isLoading.value).toBe(false);
+    expect(error.value).toBeNull();
+    expect(batch.length).toBe(4);
+    expect(batch.sensorId).toBeInstanceOf(Uint32Array);
+    expect(batch.tsMs).toBeInstanceOf(Float64Array);
+    expect(batch.val).toBeInstanceOf(Float64Array);
+
+    expect(batch.sensorId[0]).toBe(1);
+    expect(batch.tsMs[0]).toBe(1000.0);
+    expect(batch.val[1]).toBe(12.0);
+    expect(batch.val[2]).toBe(48.0);
+  });
+
+  it('cancels pending requests with AbortController when a new request is initiated', async () => {
+    let aborted = false;
+    globalThis.fetch = vi.fn().mockImplementation((_url: string, init?: RequestInit) => {
+      const signal = init?.signal as AbortSignal;
+      signal?.addEventListener('abort', () => {
+        aborted = true;
+      });
+      return new Promise(() => {}); // never resolves
+    });
+
+    const { fetchAm4Arrow } = useTelemetryStream();
+
+    // Fire first request
+    fetchAm4Arrow({ sensorId: 1, lbSec: 0, ubSec: 60, width: 800 }).catch(() => {});
+
+    // Fire second request immediately
+    fetchAm4Arrow({ sensorId: 1, lbSec: 60, ubSec: 120, width: 800 }).catch(() => {});
+
+    expect(aborted).toBe(true);
+  });
+
+  it('detects and handles truncated/corrupted IPC stream buffers', async () => {
+    // Truncated buffer (less than IPC minimum header)
+    const corruptBuffer = new Uint8Array([0x01, 0x02, 0x03]).buffer;
+
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      headers: new Headers({ 'Content-Type': 'application/vnd.apache.arrow.stream' }),
+      arrayBuffer: async () => corruptBuffer
+    });
+
+    const { fetchAm4Arrow, error } = useTelemetryStream();
+
+    await expect(fetchAm4Arrow({ sensorId: 1, lbSec: 0, ubSec: 60, width: 800 })).rejects.toThrow();
+    expect(error.value).not.toBeNull();
+  });
+});
