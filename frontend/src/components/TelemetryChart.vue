@@ -2,13 +2,16 @@
   <div class="telemetry-chart-wrapper">
     <div class="chart-header">
       <div class="title-section">
-        <h3>Sensor {{ sensorId }} Telemetry</h3>
-        <span class="badge">Walking Skeleton</span>
+        <h3>{{ chartTitle }}</h3>
+        <span class="badge" :class="isMacroRange ? 'badge-macro' : 'badge-intermediate'">
+          {{ isMacroRange ? '30-Day Macro (1h Rollup)' : 'Intermediate (1m Rollup)' }}
+        </span>
       </div>
       <div class="stats-section" v-if="currentBatch">
-        <span class="stat-item">Points: <strong>{{ currentBatch.length }}</strong></span>
-        <span class="stat-item">AM4 Viewport: <strong>{{ width }}px</strong></span>
-        <span class="stat-item" v-if="isLoading">Streaming...</span>
+        <span class="stat-item">Active Sensors: <strong>{{ activeSensorsCount }}</strong></span>
+        <span class="stat-item">Total Extrema Points: <strong>{{ currentBatch.length }}</strong></span>
+        <span class="stat-item">Viewport: <strong>{{ width }}px</strong></span>
+        <span class="stat-item loading-text" v-if="isLoading">Streaming...</span>
       </div>
       <div class="actions-section">
         <button class="btn btn-primary" :disabled="isLoading" @click="loadData">
@@ -26,62 +29,135 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue';
-import { lightningChart, ChartXY, PointLineAreaSeries } from '@arction/lcjs';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
+import { lightningChart, ChartXY, PointLineAreaSeries, ColorHEX, SolidFill } from '@arction/lcjs';
 import { useTelemetryStream } from '../composables/useTelemetryStream';
 
 const props = withDefaults(
   defineProps<{
     sensorId?: number;
+    sensorIds?: number[];
     lbSec?: number;
     ubSec?: number;
     width?: number;
   }>(),
   {
     sensorId: 1,
+    sensorIds: () => [1],
     lbSec: 1729728000,
-    ubSec: 1729728060,
+    ubSec: 1729728000 + (30 * 86400),
     width: 1920
   }
 );
 
 const chartContainer = ref<HTMLDivElement | null>(null);
 let chart: ChartXY | null = null;
-let series: PointLineAreaSeries | null = null;
+const seriesMap = new Map<number, PointLineAreaSeries>();
+
+const SENSOR_PALETTE = [
+  '#58a6ff', '#3fb950', '#d29922', '#f85149', '#bc8cff',
+  '#f0883e', '#79c0ff', '#56d364', '#e3b341', '#ff7b72'
+];
+
+const targetSensorIds = computed(() => {
+  if (props.sensorIds && props.sensorIds.length > 0) {
+    return props.sensorIds;
+  }
+  return [props.sensorId];
+});
+
+const isMacroRange = computed(() => {
+  return (props.ubSec - props.lbSec) > (7 * 86400);
+});
+
+const activeSensorsCount = computed(() => targetSensorIds.value.length);
+
+const chartTitle = computed(() => {
+  if (targetSensorIds.value.length === 1) {
+    return `Sensor ${targetSensorIds.value[0]} Telemetry`;
+  }
+  return `Synchronized Telemetry (${targetSensorIds.value.length} Sensors)`;
+});
 
 const {
   isLoading,
   error,
   isProgrammaticUpdate,
   currentBatch,
+  decomposeBySensor,
   fetchAm4Arrow
 } = useTelemetryStream();
+
+function getOrCreateSeries(sensorId: number): PointLineAreaSeries | null {
+  if (!chart) return null;
+  if (seriesMap.has(sensorId)) {
+    return seriesMap.get(sensorId)!;
+  }
+
+  const s = chart.addPointLineAreaSeries();
+  if (!s) return null;
+
+  if (typeof (s as any).setName === 'function') {
+    (s as any).setName(`Sensor ${sensorId}`);
+  }
+
+  // Assign distinct theme palette color
+  const colorHex = SENSOR_PALETTE[sensorId % SENSOR_PALETTE.length];
+  try {
+    if (typeof (s as any).setStrokeStyle === 'function') {
+      (s as any).setStrokeStyle((stroke: any) => stroke.setFillStyle(new SolidFill({ color: ColorHEX(colorHex) })));
+    }
+  } catch {
+    // optional styling fallback
+  }
+
+  seriesMap.set(sensorId, s);
+  return s;
+}
 
 async function loadData() {
   try {
     isProgrammaticUpdate.value = true;
     const batch = await fetchAm4Arrow({
-      sensorId: props.sensorId,
+      sensorIds: targetSensorIds.value,
       lbSec: props.lbSec,
       ubSec: props.ubSec,
       width: props.width
     });
 
-    if (series && batch.length > 0) {
-      series.clear();
-      // Zero-copy injection of typed arrays into LightningChart WebGL series
-      const seriesAny = series as unknown as { appendSamples?: (s: unknown) => void; add: (pts: unknown[]) => void };
-      if (typeof seriesAny.appendSamples === 'function') {
-        seriesAny.appendSamples({
-          xValues: batch.tsMs,
-          yValues: batch.val
-        });
-      } else {
-        const points = [];
-        for (let i = 0; i < batch.length; i++) {
-          points.push({ x: batch.tsMs[i], y: batch.val[i] });
+    if (chart && batch.length > 0) {
+      const decomposed = decomposeBySensor(batch);
+
+      // Clean up series for removed sensors
+      const currentActiveSensors = new Set(targetSensorIds.value);
+      for (const [sId, sInstance] of seriesMap.entries()) {
+        if (!currentActiveSensors.has(sId)) {
+          if (typeof sInstance.dispose === 'function') {
+            sInstance.dispose();
+          }
+          seriesMap.delete(sId);
         }
-        seriesAny.add(points);
+      }
+
+      // Inject zero-copy slices into each sensor's series
+      for (const [sensorId, sensorData] of decomposed.entries()) {
+        const s = getOrCreateSeries(sensorId);
+        if (s) {
+          s.clear();
+          const seriesAny = s as unknown as { appendSamples?: (args: unknown) => void; add: (pts: unknown[]) => void };
+          if (typeof seriesAny.appendSamples === 'function') {
+            seriesAny.appendSamples({
+              xValues: sensorData.tsMs,
+              yValues: sensorData.val
+            });
+          } else {
+            const points = [];
+            for (let i = 0; i < sensorData.length; i++) {
+              points.push({ x: sensorData.tsMs[i], y: sensorData.val[i] });
+            }
+            seriesAny.add(points);
+          }
+        }
       }
     }
   } catch (err) {
@@ -98,10 +174,7 @@ onMounted(() => {
         container: chartContainer.value
       });
 
-      chart.setTitle(`Sensor ${props.sensorId} - Real-time AM4 Rollup Extrema`);
-
-      series = chart.addPointLineAreaSeries();
-
+      chart.setTitle(chartTitle.value);
       loadData();
     } catch (e) {
       console.warn('WebGL / LightningChart initialization note:', e);
@@ -113,17 +186,21 @@ onUnmounted(() => {
   if (chart) {
     chart.dispose();
     chart = null;
-    series = null;
+    seriesMap.clear();
   }
 });
 
 watch(
-  () => [props.sensorId, props.lbSec, props.ubSec],
+  () => [props.sensorIds, props.sensorId, props.lbSec, props.ubSec],
   () => {
     if (!isProgrammaticUpdate.value) {
+      if (chart) {
+        chart.setTitle(chartTitle.value);
+      }
       loadData();
     }
-  }
+  },
+  { deep: true }
 );
 </script>
 
@@ -159,12 +236,19 @@ watch(
 }
 
 .badge {
-  background-color: #238636;
   color: #fff;
-  padding: 2px 8px;
+  padding: 2px 10px;
   border-radius: 12px;
   font-size: 0.75rem;
   font-weight: 600;
+}
+
+.badge-macro {
+  background-color: #8957e5;
+}
+
+.badge-intermediate {
+  background-color: #238636;
 }
 
 .stats-section {
@@ -176,6 +260,11 @@ watch(
 
 .stat-item strong {
   color: #58a6ff;
+}
+
+.loading-text {
+  color: #d29922;
+  font-weight: 600;
 }
 
 .btn {
@@ -205,7 +294,7 @@ watch(
 
 .chart-container {
   flex: 1;
-  min-height: 450px;
+  min-height: 480px;
   width: 100%;
   border-radius: 4px;
   background-color: #0d1117;

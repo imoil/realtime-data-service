@@ -8,8 +8,16 @@ export interface TelemetryBatch {
   length: number;
 }
 
+export interface SensorSeries {
+  sensorId: number;
+  tsMs: Float64Array;
+  val: Float64Array;
+  length: number;
+}
+
 export interface FetchOptions {
   sensorId?: number;
+  sensorIds?: number[];
   lbSec: number;
   ubSec: number;
   width?: number;
@@ -23,6 +31,42 @@ export function useTelemetryStream() {
 
   let abortController: AbortController | null = null;
 
+  /**
+   * Decomposes a multi-sensor Arrow batch into zero-copy subarray views per sensor.
+   * Leverages sorted sensor_id values without allocating new underlying array buffers.
+   */
+  function decomposeBySensor(batch: TelemetryBatch): Map<number, SensorSeries> {
+    const result = new Map<number, SensorSeries>();
+    const n = batch.length;
+    if (n === 0) return result;
+
+    const sensorIds = batch.sensorId;
+    let startIdx = 0;
+    let currentSensor = sensorIds[0];
+
+    for (let i = 1; i <= n; i++) {
+      if (i === n || sensorIds[i] !== currentSensor) {
+        // Zero-copy view slice
+        const tsMsSlice = batch.tsMs.subarray(startIdx, i);
+        const valSlice = batch.val.subarray(startIdx, i);
+
+        result.set(currentSensor, {
+          sensorId: currentSensor,
+          tsMs: tsMsSlice,
+          val: valSlice,
+          length: i - startIdx
+        });
+
+        if (i < n) {
+          currentSensor = sensorIds[i];
+          startIdx = i;
+        }
+      }
+    }
+
+    return result;
+  }
+
   async function fetchAm4Arrow(options: FetchOptions): Promise<TelemetryBatch> {
     if (abortController) {
       abortController.abort();
@@ -34,14 +78,19 @@ export function useTelemetryStream() {
     error.value = null;
 
     try {
-      const sensorId = options.sensorId ?? 1;
       const width = options.width ?? 1920;
       const params = new URLSearchParams({
-        sensor_id: sensorId.toString(),
         lb_sec: options.lbSec.toString(),
         ub_sec: options.ubSec.toString(),
         width: width.toString()
       });
+
+      if (options.sensorIds && options.sensorIds.length > 0) {
+        params.set('sensor_ids', options.sensorIds.join(','));
+      } else {
+        const sensorId = options.sensorId ?? 1;
+        params.set('sensor_id', sensorId.toString());
+      }
 
       const response = await fetch(`/api/v1/telemetry/am4-arrow?${params.toString()}`, {
         method: 'GET',
@@ -104,6 +153,7 @@ export function useTelemetryStream() {
     error,
     isProgrammaticUpdate,
     currentBatch,
+    decomposeBySensor,
     fetchAm4Arrow
   };
 }

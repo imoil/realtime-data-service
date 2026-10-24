@@ -8,8 +8,8 @@ import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindo
 import java.time.Duration;
 
 /**
- * End-to-end Flink streaming pipeline for single sensor telemetry.
- * Ingests Protobuf telemetry stream, applies 1-minute event-time tumbling window,
+ * End-to-end Flink streaming pipeline for telemetry rollups.
+ * Ingests Protobuf telemetry stream, applies event-time tumbling windows (1m and 1h),
  * and computes 8-scalar extrema rollups.
  */
 public class SingleSensorPipelineJob {
@@ -31,5 +31,24 @@ public class SingleSensorPipelineJob {
                 .window(TumblingEventTimeWindows.of(Duration.ofMinutes(1)))
                 .aggregate(new SensorRollupExtremaAggregator())
                 .name("1MinuteExtremaAggregator");
+    }
+
+    public static DataStream<SensorRollup1h> build1HourPipeline(
+            StreamExecutionEnvironment env,
+            DataStream<byte[]> rawProtobufStream
+    ) {
+        WatermarkStrategy<TelemetryRecord> watermarkStrategy = WatermarkStrategy
+                .<TelemetryRecord>forBoundedOutOfOrderness(Duration.ofSeconds(5))
+                .withTimestampAssigner((record, timestamp) -> record.getTimestampMs());
+
+        return rawProtobufStream
+                .map(TelemetryRecord::fromProtobufBytes)
+                .name("ProtobufDeserializer")
+                .assignTimestampsAndWatermarks(watermarkStrategy)
+                .name("WatermarkAssigner")
+                .keyBy(TelemetryRecord::getSensorId)
+                .window(TumblingEventTimeWindows.of(Duration.ofHours(1)))
+                .aggregate(new SensorRollup1hExtremaAggregator())
+                .name("1HourExtremaAggregator");
     }
 }

@@ -8,7 +8,10 @@ vi.mock('@arction/lcjs', () => {
   const dummySeries = {
     clear: vi.fn(),
     appendSamples: vi.fn(),
-    add: vi.fn()
+    add: vi.fn(),
+    setName: vi.fn(),
+    setStrokeStyle: vi.fn(),
+    dispose: vi.fn()
   };
   const dummyChart = {
     setTitle: vi.fn(),
@@ -19,7 +22,11 @@ vi.mock('@arction/lcjs', () => {
     lightningChart: () => ({
       ChartXY: () => dummyChart
     }),
-    PointLineAreaSeries: {}
+    PointLineAreaSeries: {},
+    ColorHEX: (c: string) => c,
+    SolidFill: class {
+      constructor(public options: any) {}
+    }
   };
 });
 
@@ -28,11 +35,11 @@ describe('TelemetryChart.vue', () => {
     vi.restoreAllMocks();
   });
 
-  it('mounts and renders chart header and walking skeleton badge', async () => {
+  it('mounts and renders multi-sensor 30-day macro badge and header', async () => {
     const mockTable = tableFromArrays({
-      sensor_id: new Uint32Array([1, 1]),
-      ts_ms: new Float64Array([1000.0, 2000.0]),
-      val: new Float64Array([25.0, 30.0])
+      sensor_id: new Uint32Array([1, 1, 2, 2]),
+      ts_ms: new Float64Array([1000.0, 2000.0, 1000.0, 2000.0]),
+      val: new Float64Array([25.0, 30.0, 45.0, 50.0])
     });
     const ipcBuffer = tableToIPC(mockTable, { format: 'stream' });
 
@@ -46,15 +53,15 @@ describe('TelemetryChart.vue', () => {
 
     const wrapper = mount(TelemetryChart as any, {
       props: {
-        sensorId: 1,
+        sensorIds: [1, 2],
         lbSec: 1729728000,
-        ubSec: 1729728060,
+        ubSec: 1729728000 + (30 * 86400),
         width: 1920
       }
     });
 
-    expect(wrapper.text()).toContain('Sensor 1 Telemetry');
-    expect(wrapper.text()).toContain('Walking Skeleton');
+    expect(wrapper.text()).toContain('Synchronized Telemetry (2 Sensors)');
+    expect(wrapper.text()).toContain('30-Day Macro (1h Rollup)');
     expect(wrapper.find('button.btn-primary').text()).toBe('Refresh');
   });
 });
