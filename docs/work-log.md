@@ -60,9 +60,7 @@ flowchart TD
     T3 -->|Blocks| T5
     T4 -->|Blocks| T5
 
-    classDef frontier fill:#238636,stroke:#2ea043,color:#fff,font-weight:bold;
-    classDef blocked fill:#21262d,stroke:#30363d,color:#8b949e;
-```
+    classDef frontier fill:#238636,stroke:#2ea043,color:#fff,font-weight:bold;\n    classDef blocked fill:#21262d,stroke:#30363d,color:#8b949e;\n```
 6. /ask-matt 티켓을 모두 생성했다면, 컨텍스트를 clear 해도 되나?
 7. /clear
 8. /implement #2
@@ -106,3 +104,5 @@ flowchart TD
 34. gh issue close 9 --comment "Completed unified Flink stream processing topology refactoring (commit c4dcc2c)"
 35. /clear
 36. /implement #10
+37. gh issue close 10 --comment "Completed headless useTelemetryDashboard deep composable (commit eddbd06)"
+38. /retro
