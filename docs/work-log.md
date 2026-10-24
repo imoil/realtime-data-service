@@ -78,3 +78,6 @@ flowchart TD
 18. /clear
 19. /implement #5
 20. /retro
+21. /clear
+22. /implement #6
+23. /retro

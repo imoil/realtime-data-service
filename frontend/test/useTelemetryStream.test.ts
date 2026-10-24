@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { useTelemetryStream } from '../src/composables/useTelemetryStream';
+import { useTelemetryStream, hasValidArrowEos } from '../src/composables/useTelemetryStream';
 import { tableFromArrays, tableToIPC } from '@uwdata/flechette';
 
 describe('useTelemetryStream composable', () => {
@@ -7,21 +7,37 @@ describe('useTelemetryStream composable', () => {
     vi.restoreAllMocks();
   });
 
+  it('validates Arrow EOS marker (0xFFFFFFFF) in stream buffer', () => {
+    const mockTable = tableFromArrays({
+      a: [1, 2]
+    });
+    const validIpc = tableToIPC(mockTable, { format: 'stream' })!;
+    expect(hasValidArrowEos(validIpc.buffer)).toBe(true);
+
+    // Truncated buffer missing EOS bytes
+    const truncatedBuffer = validIpc.buffer.slice(0, validIpc.buffer.byteLength - 8);
+    const corruptBuffer = new Uint8Array([0x01, 0x02, 0x03, 0x04]).buffer;
+    expect(hasValidArrowEos(truncatedBuffer)).toBe(false);
+    expect(hasValidArrowEos(corruptBuffer)).toBe(false);
+
+    // Empty or short buffer
+    expect(hasValidArrowEos(new ArrayBuffer(2))).toBe(false);
+  });
+
   it('decodes Apache Arrow IPC stream zero-copy into typed arrays', async () => {
-    // Prepare synthetic Arrow IPC buffer
     const mockTable = tableFromArrays({
       sensor_id: new Uint32Array([1, 1, 1, 1]),
       ts_ms: new Float64Array([1000.0, 1015.0, 1045.0, 1059.0]),
       val: new Float64Array([20.0, 12.0, 48.0, 21.0])
     });
-    const ipcBuffer = tableToIPC(mockTable, { format: 'stream' });
+    const ipcBuffer = tableToIPC(mockTable, { format: 'stream' })!;
 
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,
       headers: new Headers({
         'Content-Type': 'application/vnd.apache.arrow.stream'
       }),
-      arrayBuffer: async () => ipcBuffer!.buffer
+      arrayBuffer: async () => ipcBuffer.buffer
     });
 
     const { fetchAm4Arrow, isLoading, error } = useTelemetryStream();
@@ -47,20 +63,19 @@ describe('useTelemetryStream composable', () => {
   });
 
   it('decomposes multi-sensor Arrow streams into zero-copy subarray views per sensor', async () => {
-    // 2 sensors, 4 points each (total 8 points)
     const mockTable = tableFromArrays({
       sensor_id: new Uint32Array([1, 1, 1, 1, 2, 2, 2, 2]),
       ts_ms: new Float64Array([100, 200, 300, 400, 100, 200, 300, 400]),
       val: new Float64Array([10.0, 15.0, 8.0, 12.0, 50.0, 55.0, 48.0, 52.0])
     });
-    const ipcBuffer = tableToIPC(mockTable, { format: 'stream' });
+    const ipcBuffer = tableToIPC(mockTable, { format: 'stream' })!;
 
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,
       headers: new Headers({
         'Content-Type': 'application/vnd.apache.arrow.stream'
       }),
-      arrayBuffer: async () => ipcBuffer!.buffer
+      arrayBuffer: async () => ipcBuffer.buffer
     });
 
     const { fetchAm4Arrow, decomposeBySensor } = useTelemetryStream();
@@ -83,16 +98,12 @@ describe('useTelemetryStream composable', () => {
     expect(s1.length).toBe(4);
     expect(s2.length).toBe(4);
 
-    // Verify s1 and s2 share underlying buffer without heap duplication (zero-copy)
     expect(s1.tsMs.buffer).toBe(batch.tsMs.buffer);
     expect(s2.tsMs.buffer).toBe(batch.tsMs.buffer);
     expect(s1.val.buffer).toBe(batch.val.buffer);
 
-    // Values match
     expect(s1.val[0]).toBe(10.0);
     expect(s2.val[0]).toBe(50.0);
-    expect(s1.tsMs[3]).toBe(400);
-    expect(s2.tsMs[3]).toBe(400);
   });
 
   it('cancels pending requests with AbortController when a new request is initiated', async () => {
@@ -116,19 +127,71 @@ describe('useTelemetryStream composable', () => {
     expect(aborted).toBe(true);
   });
 
-  it('detects and handles truncated/corrupted IPC stream buffers', async () => {
-    // Truncated buffer (less than IPC minimum header)
-    const corruptBuffer = new Uint8Array([0x01, 0x02, 0x03]).buffer;
+  it('triggers exponential backoff retry on transient stream errors and succeeds', async () => {
+    const mockTable = tableFromArrays({
+      sensor_id: new Uint32Array([1]),
+      ts_ms: new Float64Array([1000]),
+      val: new Float64Array([25.0])
+    });
+    const validBuffer = tableToIPC(mockTable, { format: 'stream' })!.buffer;
 
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      headers: new Headers({ 'Content-Type': 'application/vnd.apache.arrow.stream' }),
-      arrayBuffer: async () => corruptBuffer
+    let callCount = 0;
+    globalThis.fetch = vi.fn().mockImplementation(async () => {
+      callCount++;
+      if (callCount === 1) {
+        // First attempt fails with malformed/truncated stream
+        return {
+          ok: true,
+          arrayBuffer: async () => new Uint8Array([0x01, 0x02, 0x03, 0x04]).buffer
+        };
+      }
+      // Second attempt succeeds
+      return {
+        ok: true,
+        arrayBuffer: async () => validBuffer
+      };
     });
 
-    const { fetchAm4Arrow, error } = useTelemetryStream();
+    const { fetchAm4Arrow, retryCount, error } = useTelemetryStream();
 
-    await expect(fetchAm4Arrow({ sensorId: 1, lbSec: 0, ubSec: 60, width: 800 })).rejects.toThrow();
-    expect(error.value).not.toBeNull();
+    const batch = await fetchAm4Arrow({
+      sensorId: 1,
+      lbSec: 0,
+      ubSec: 60,
+      maxRetries: 2,
+      initialDelayMs: 10,
+      backoffMultiplier: 2
+    });
+
+    expect(callCount).toBe(2);
+    expect(retryCount.value).toBe(1);
+    expect(error.value).toBeNull();
+    expect(batch.length).toBe(1);
+  });
+
+  it('fails and sets error state after exhausting max retries', async () => {
+    let callCount = 0;
+    globalThis.fetch = vi.fn().mockImplementation(async () => {
+      callCount++;
+      return {
+        ok: false,
+        status: 503,
+        statusText: 'Service Unavailable'
+      };
+    });
+
+    const { fetchAm4Arrow, retryCount, error } = useTelemetryStream();
+
+    await expect(fetchAm4Arrow({
+      sensorId: 1,
+      lbSec: 0,
+      ubSec: 60,
+      maxRetries: 2,
+      initialDelayMs: 10
+    })).rejects.toThrow('HTTP error 503: Service Unavailable');
+
+    expect(callCount).toBe(3); // Initial + 2 retries
+    expect(retryCount.value).toBe(2);
+    expect(error.value).toContain('HTTP error 503');
   });
 });

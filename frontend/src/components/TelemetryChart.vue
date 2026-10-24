@@ -3,28 +3,31 @@
     <div class="chart-header">
       <div class="title-section">
         <h3>{{ chartTitle }}</h3>
-        <span class="badge" :class="isMacroRange ? 'badge-macro' : 'badge-intermediate'">
-          {{ isMacroRange ? '30-Day Macro (1h Rollup)' : 'Intermediate (1m Rollup)' }}
+        <span class="badge" :class="isMacroRange ? 'badge-macro' : (isMicroZoom ? 'badge-micro' : 'badge-intermediate')">
+          {{ isMacroRange ? '30-Day Macro (1h Rollup)' : (isMicroZoom ? 'Micro-Zoom (Iceberg Raw)' : 'Intermediate (1m Rollup)') }}
         </span>
-        <span class="live-badge" :class="{ 'live-online': isConnected, 'live-offline': !isConnected }">
-          ● {{ isConnected ? 'Live Tail (Active)' : 'Live Tail (Connecting)' }}
+        <span class="live-badge" :class="isConnected ? 'live-online' : 'live-offline'">
+          ● Live Tail: {{ isConnected ? 'Connected' : 'Connecting...' }}
         </span>
       </div>
-      <div class="stats-section" v-if="currentBatch || tickCount > 0">
+
+      <div class="stats-section">
         <span class="stat-item">Active Sensors: <strong>{{ activeSensorsCount }}</strong></span>
-        <span class="stat-item">Total Historical Points: <strong>{{ currentBatch?.length ?? 0 }}</strong></span>
-        <span class="stat-item">Live Ticks Appended: <strong class="live-counter">{{ tickCount }}</strong></span>
-        <span class="stat-item loading-text" v-if="isLoading">Streaming...</span>
+        <span class="stat-item">Live Ticks: <strong class="live-counter">{{ tickCount }}</strong></span>
+        <span class="stat-item">
+          Window: <strong>{{ formatDuration(currentUbSec - currentLbSec) }}</strong>
+        </span>
+        <span v-if="isLoading" class="loading-text">Streaming Arrow IPC...</span>
       </div>
+
       <div class="actions-section">
-        <button
-          class="btn btn-secondary"
-          :class="{ 'btn-active': isLiveEnabled }"
-          @click="isLiveEnabled = !isLiveEnabled"
-        >
+        <button class="btn btn-secondary" :class="{ 'btn-active': isLiveEnabled }" @click="toggleLiveTail">
           {{ isLiveEnabled ? 'Pause Live' : 'Resume Live' }}
         </button>
-        <button class="btn btn-primary" :disabled="isLoading" @click="loadData">
+        <button class="btn btn-primary" :disabled="isLoading" @click="resetToFullRange">
+          Reset 30-Day View
+        </button>
+        <button class="btn btn-secondary" :disabled="isLoading" @click="refreshData">
           {{ isLoading ? 'Loading...' : 'Refresh' }}
         </button>
       </div>
@@ -34,7 +37,17 @@
       Streaming Error: {{ error }}
     </div>
 
+    <!-- Main High-Resolution Semantic Zoom Chart -->
     <div ref="chartContainer" class="chart-container"></div>
+
+    <!-- ZoomBandChart: 30-Day Global Overview Outline Mini-Map -->
+    <div class="zoomband-wrapper">
+      <div class="zoomband-header">
+        <span>30-Day Global Overview Mini-Map (ZoomBandChart)</span>
+        <span class="zoomband-hint">Drag or resize the selection band to navigate semantic zoom (120ms debounce)</span>
+      </div>
+      <div ref="zoomBandContainer" class="zoomband-container"></div>
+    </div>
   </div>
 </template>
 
@@ -62,8 +75,15 @@ const props = withDefaults(
 );
 
 const chartContainer = ref<HTMLDivElement | null>(null);
+const zoomBandContainer = ref<HTMLDivElement | null>(null);
+
 let chart: ChartXY | null = null;
+let zoomBandChart: any = null;
 const seriesMap = new Map<number, PointLineAreaSeries>();
+const zoomBandSeriesMap = new Map<number, PointLineAreaSeries>();
+
+const currentLbSec = ref(props.lbSec);
+const currentUbSec = ref(props.ubSec);
 
 const SENSOR_PALETTE = [
   '#58a6ff', '#3fb950', '#d29922', '#f85149', '#bc8cff',
@@ -78,7 +98,11 @@ const targetSensorIds = computed(() => {
 });
 
 const isMacroRange = computed(() => {
-  return (props.ubSec - props.lbSec) > (7 * 86400);
+  return (currentUbSec.value - currentLbSec.value) > (7 * 86400);
+});
+
+const isMicroZoom = computed(() => {
+  return (currentUbSec.value - currentLbSec.value) <= (6 * 3600);
 });
 
 const activeSensorsCount = computed(() => targetSensorIds.value.length);
@@ -94,7 +118,6 @@ const {
   isLoading,
   error,
   isProgrammaticUpdate,
-  currentBatch,
   decomposeBySensor,
   fetchAm4Arrow
 } = useTelemetryStream();
@@ -108,6 +131,22 @@ const {
   subscribe: subscribeLiveTail,
   onTick
 } = useLiveTelemetryTail();
+
+function formatDuration(sec: number): string {
+  if (sec >= 86400) {
+    const d = Math.round(sec / 86400);
+    return `${d} Day${d > 1 ? 's' : ''}`;
+  }
+  if (sec >= 3600) {
+    const h = Math.round(sec / 3600);
+    return `${h} Hour${h > 1 ? 's' : ''}`;
+  }
+  if (sec >= 60) {
+    const m = Math.round(sec / 60);
+    return `${m} Min`;
+  }
+  return `${sec} Sec`;
+}
 
 function getOrCreateSeries(sensorId: number): PointLineAreaSeries | null {
   if (!chart) return null;
@@ -135,13 +174,55 @@ function getOrCreateSeries(sensorId: number): PointLineAreaSeries | null {
   return s;
 }
 
-async function loadData() {
+function getOrCreateZoomBandSeries(sensorId: number): PointLineAreaSeries | null {
+  if (!zoomBandChart) return null;
+  if (zoomBandSeriesMap.has(sensorId)) {
+    return zoomBandSeriesMap.get(sensorId)!;
+  }
+
+  let s: PointLineAreaSeries | null = null;
+  if (typeof zoomBandChart.addPointLineAreaSeries === 'function') {
+    s = zoomBandChart.addPointLineAreaSeries();
+  }
+  if (!s) return null;
+
+  const colorHex = SENSOR_PALETTE[sensorId % SENSOR_PALETTE.length];
+  try {
+    if (typeof (s as any).setStrokeStyle === 'function') {
+      (s as any).setStrokeStyle((stroke: any) => stroke.setFillStyle(new SolidFill({ color: ColorHEX(colorHex) })));
+    }
+  } catch {
+    // optional styling fallback
+  }
+
+  zoomBandSeriesMap.set(sensorId, s);
+  return s;
+}
+
+/**
+ * 120ms debounce utility to coalesce rapid zoom/pan events
+ * and prevent circular chart re-query storms.
+ */
+function debounce<T extends (...args: any[]) => void>(fn: T, delayMs = 120): (...args: Parameters<T>) => void {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  return (...args: Parameters<T>) => {
+    if (timeoutId) clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => {
+      fn(...args);
+    }, delayMs);
+  };
+}
+
+/**
+ * Loads high-resolution semantic zoom data for the active time window.
+ */
+async function loadData(lbSec = currentLbSec.value, ubSec = currentUbSec.value) {
   try {
     isProgrammaticUpdate.value = true;
     const batch = await fetchAm4Arrow({
       sensorIds: targetSensorIds.value,
-      lbSec: props.lbSec,
-      ubSec: props.ubSec,
+      lbSec,
+      ubSec,
       width: props.width
     });
 
@@ -159,7 +240,7 @@ async function loadData() {
         }
       }
 
-      // Inject zero-copy slices into each sensor's series
+      // Inject zero-copy slices into each sensor's main series
       for (const [sensorId, sensorData] of decomposed.entries()) {
         const s = getOrCreateSeries(sensorId);
         if (s) {
@@ -180,10 +261,100 @@ async function loadData() {
         }
       }
     }
-  } catch (err) {
-    console.error('Failed to stream telemetry:', err);
+  } catch (err: unknown) {
+    if ((err as Error)?.name !== 'AbortError') {
+      console.error('Failed to stream telemetry:', err);
+    }
   } finally {
     isProgrammaticUpdate.value = false;
+  }
+}
+
+/**
+ * Loads 30-day macro overview outline into the ZoomBandChart.
+ */
+async function loadOverviewData() {
+  try {
+    const macroBatch = await fetchAm4Arrow({
+      sensorIds: targetSensorIds.value,
+      lbSec: props.lbSec,
+      ubSec: props.ubSec,
+      width: 1000
+    });
+
+    if (zoomBandChart && macroBatch.length > 0) {
+      const decomposed = decomposeBySensor(macroBatch);
+      for (const [sensorId, sensorData] of decomposed.entries()) {
+        const s = getOrCreateZoomBandSeries(sensorId);
+        if (s) {
+          s.clear();
+          const seriesAny = s as unknown as { appendSamples?: (args: unknown) => void; add: (pts: unknown[]) => void };
+          if (typeof seriesAny.appendSamples === 'function') {
+            seriesAny.appendSamples({
+              xValues: sensorData.tsMs,
+              yValues: sensorData.val
+            });
+          } else {
+            const points = [];
+            for (let i = 0; i < sensorData.length; i++) {
+              points.push({ x: sensorData.tsMs[i], y: sensorData.val[i] });
+            }
+            seriesAny.add(points);
+          }
+        }
+      }
+    }
+  } catch (err: unknown) {
+    if ((err as Error)?.name !== 'AbortError') {
+      console.warn('Failed to load ZoomBand overview outline:', err);
+    }
+  }
+}
+
+/**
+ * Debounced semantic zoom navigator triggered by ZoomBandChart dragging or resizing.
+ */
+const debouncedZoomNavigate = debounce((startMs: number, endMs: number) => {
+  if (isProgrammaticUpdate.value) return;
+
+  const newLbSec = Math.floor(startMs / 1000);
+  const newUbSec = Math.ceil(endMs / 1000);
+
+  if (newUbSec > newLbSec) {
+    currentLbSec.value = newLbSec;
+    currentUbSec.value = newUbSec;
+    loadData(newLbSec, newUbSec);
+  }
+}, 120);
+
+function handleZoomBandIntervalChange(startMs: number, endMs: number) {
+  debouncedZoomNavigate(startMs, endMs);
+}
+
+function resetToFullRange() {
+  currentLbSec.value = props.lbSec;
+  currentUbSec.value = props.ubSec;
+  if (zoomBandChart && typeof zoomBandChart.setInterval === 'function') {
+    isProgrammaticUpdate.value = true;
+    try {
+      zoomBandChart.setInterval(props.lbSec * 1000, props.ubSec * 1000);
+    } finally {
+      isProgrammaticUpdate.value = false;
+    }
+  }
+  loadData(props.lbSec, props.ubSec);
+}
+
+function refreshData() {
+  loadData(currentLbSec.value, currentUbSec.value);
+}
+
+function toggleLiveTail() {
+  if (isLiveEnabled.value) {
+    disconnectLiveTail();
+  } else {
+    connectLiveTail();
+    subscribeLiveTail(targetSensorIds.value);
   }
 }
 
@@ -209,9 +380,31 @@ onMounted(() => {
       chart = lightningChart().ChartXY({
         container: chartContainer.value
       });
-
       chart.setTitle(chartTitle.value);
-      loadData();
+
+      // Create ZoomBandChart mini-map linked to the main chart
+      if (zoomBandContainer.value) {
+        if (typeof (chart as any).createZoomBandChart === 'function') {
+          zoomBandChart = (chart as any).createZoomBandChart({
+            container: zoomBandContainer.value
+          });
+        } else {
+          try {
+            zoomBandChart = (lightningChart() as any).ZoomBandChart?.({
+              container: zoomBandContainer.value
+            });
+          } catch {
+            // fallback
+          }
+        }
+
+        if (zoomBandChart && typeof zoomBandChart.onIntervalChange === 'function') {
+          zoomBandChart.onIntervalChange(handleZoomBandIntervalChange);
+        }
+      }
+
+      loadOverviewData();
+      loadData(currentLbSec.value, currentUbSec.value);
     } catch (e) {
       console.warn('WebGL / LightningChart initialization note:', e);
     }
@@ -224,6 +417,11 @@ onMounted(() => {
 
 onUnmounted(() => {
   disconnectLiveTail();
+  if (zoomBandChart && typeof zoomBandChart.dispose === 'function') {
+    zoomBandChart.dispose();
+    zoomBandChart = null;
+    zoomBandSeriesMap.clear();
+  }
   if (chart) {
     chart.dispose();
     chart = null;
@@ -235,15 +433,27 @@ watch(
   () => [props.sensorIds, props.sensorId, props.lbSec, props.ubSec],
   () => {
     if (!isProgrammaticUpdate.value) {
+      currentLbSec.value = props.lbSec;
+      currentUbSec.value = props.ubSec;
       if (chart) {
         chart.setTitle(chartTitle.value);
       }
-      loadData();
+      loadOverviewData();
+      loadData(props.lbSec, props.ubSec);
       subscribeLiveTail(targetSensorIds.value);
     }
   },
   { deep: true }
 );
+
+defineExpose({
+  handleZoomBandIntervalChange,
+  currentLbSec,
+  currentUbSec,
+  isProgrammaticUpdate,
+  loadData,
+  resetToFullRange
+});
 </script>
 
 <style scoped>
@@ -291,6 +501,10 @@ watch(
 
 .badge-intermediate {
   background-color: #238636;
+}
+
+.badge-micro {
+  background-color: #1f6feb;
 }
 
 .live-badge {
@@ -378,7 +592,34 @@ watch(
 
 .chart-container {
   flex: 1;
-  min-height: 480px;
+  min-height: 440px;
+  width: 100%;
+  border-radius: 4px;
+  background-color: #0d1117;
+}
+
+.zoomband-wrapper {
+  margin-top: 12px;
+  background-color: #161b22;
+  border-radius: 6px;
+  padding: 8px 12px;
+  border: 1px solid rgba(240, 246, 252, 0.1);
+}
+
+.zoomband-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: #8b949e;
+  margin-bottom: 6px;
+}
+
+.zoomband-hint {
+  color: #58a6ff;
+}
+
+.zoomband-container {
+  height: 90px;
   width: 100%;
   border-radius: 4px;
   background-color: #0d1117;
