@@ -103,3 +103,6 @@ flowchart TD
 31. /clear
 32. /implement #9
 33. /retro
+34. gh issue close 9 --comment "Completed unified Flink stream processing topology refactoring (commit c4dcc2c)"
+35. /clear
+36. /implement #10

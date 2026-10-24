@@ -52,10 +52,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
+import { ref, onMounted, onUnmounted, watch } from 'vue';
 import { lightningChart, ChartXY, PointLineAreaSeries, ColorHEX, SolidFill } from '@arction/lcjs';
-import { useTelemetryStream } from '../composables/useTelemetryStream';
-import { useLiveTelemetryTail } from '../composables/useLiveTelemetryTail';
+import { useTelemetryDashboard } from '../composables/useTelemetryDashboard';
 
 const props = withDefaults(
   defineProps<{
@@ -82,55 +81,44 @@ let zoomBandChart: any = null;
 const seriesMap = new Map<number, PointLineAreaSeries>();
 const zoomBandSeriesMap = new Map<number, PointLineAreaSeries>();
 
-const currentLbSec = ref(props.lbSec);
-const currentUbSec = ref(props.ubSec);
-
 const SENSOR_PALETTE = [
   '#58a6ff', '#3fb950', '#d29922', '#f85149', '#bc8cff',
   '#f0883e', '#79c0ff', '#56d364', '#e3b341', '#ff7b72'
 ];
 
-const targetSensorIds = computed(() => {
-  if (props.sensorIds && props.sensorIds.length > 0) {
-    return props.sensorIds;
-  }
-  return [props.sensorId];
-});
-
-const isMacroRange = computed(() => {
-  return (currentUbSec.value - currentLbSec.value) > (7 * 86400);
-});
-
-const isMicroZoom = computed(() => {
-  return (currentUbSec.value - currentLbSec.value) <= (6 * 3600);
-});
-
-const activeSensorsCount = computed(() => targetSensorIds.value.length);
-
-const chartTitle = computed(() => {
-  if (targetSensorIds.value.length === 1) {
-    return `Sensor ${targetSensorIds.value[0]} Telemetry`;
-  }
-  return `Synchronized Telemetry (${targetSensorIds.value.length} Sensors)`;
+const dashboard = useTelemetryDashboard({
+  sensorId: props.sensorId,
+  sensorIds: props.sensorIds,
+  lbSec: props.lbSec,
+  ubSec: props.ubSec,
+  width: props.width
 });
 
 const {
+  currentLbSec,
+  currentUbSec,
+  activeSensors,
+  activeSensorsCount,
+  isMacroRange,
+  isMicroZoom,
+  chartTitle,
   isLoading,
   error,
   isProgrammaticUpdate,
-  decomposeBySensor,
-  fetchAm4Arrow
-} = useTelemetryStream();
-
-const {
   isConnected,
   tickCount,
   isLiveEnabled,
-  connect: connectLiveTail,
-  disconnect: disconnectLiveTail,
-  subscribe: subscribeLiveTail,
+  zoomTo,
+  resetToMacro,
+  refresh,
+  toggleLiveTail,
+  loadHistoricalData,
+  mountDashboard,
+  disposeDashboard,
+  onHistoricalData,
+  onOverviewData,
   onTick
-} = useLiveTelemetryTail();
+} = dashboard;
 
 function formatDuration(sec: number): string {
   if (sec >= 86400) {
@@ -199,166 +187,65 @@ function getOrCreateZoomBandSeries(sensorId: number): PointLineAreaSeries | null
   return s;
 }
 
-/**
- * 120ms debounce utility to coalesce rapid zoom/pan events
- * and prevent circular chart re-query storms.
- */
-function debounce<T extends (...args: any[]) => void>(fn: T, delayMs = 120): (...args: Parameters<T>) => void {
-  let timeoutId: ReturnType<typeof setTimeout> | null = null;
-  return (...args: Parameters<T>) => {
-    if (timeoutId) clearTimeout(timeoutId);
-    timeoutId = setTimeout(() => {
-      fn(...args);
-    }, delayMs);
-  };
-}
-
-/**
- * Loads high-resolution semantic zoom data for the active time window.
- */
-async function loadData(lbSec = currentLbSec.value, ubSec = currentUbSec.value) {
-  try {
-    isProgrammaticUpdate.value = true;
-    const batch = await fetchAm4Arrow({
-      sensorIds: targetSensorIds.value,
-      lbSec,
-      ubSec,
-      width: props.width
-    });
-
-    if (chart && batch.length > 0) {
-      const decomposed = decomposeBySensor(batch);
-
-      // Clean up series for removed sensors
-      const currentActiveSensors = new Set(targetSensorIds.value);
-      for (const [sId, sInstance] of seriesMap.entries()) {
-        if (!currentActiveSensors.has(sId)) {
-          if (typeof sInstance.dispose === 'function') {
-            sInstance.dispose();
-          }
-          seriesMap.delete(sId);
-        }
+// Bind historical data to main chart series
+onHistoricalData((decomposed) => {
+  if (!chart) return;
+  const currentActive = new Set(activeSensors.value);
+  for (const [sId, sInstance] of seriesMap.entries()) {
+    if (!currentActive.has(sId)) {
+      if (typeof sInstance.dispose === 'function') {
+        sInstance.dispose();
       }
+      seriesMap.delete(sId);
+    }
+  }
 
-      // Inject zero-copy slices into each sensor's main series
-      for (const [sensorId, sensorData] of decomposed.entries()) {
-        const s = getOrCreateSeries(sensorId);
-        if (s) {
-          s.clear();
-          const seriesAny = s as unknown as { appendSamples?: (args: unknown) => void; add: (pts: unknown[]) => void };
-          if (typeof seriesAny.appendSamples === 'function') {
-            seriesAny.appendSamples({
-              xValues: sensorData.tsMs,
-              yValues: sensorData.val
-            });
-          } else {
-            const points = [];
-            for (let i = 0; i < sensorData.length; i++) {
-              points.push({ x: sensorData.tsMs[i], y: sensorData.val[i] });
-            }
-            seriesAny.add(points);
-          }
+  for (const [sensorId, sensorData] of decomposed.entries()) {
+    const s = getOrCreateSeries(sensorId);
+    if (s) {
+      s.clear();
+      const seriesAny = s as unknown as { appendSamples?: (args: unknown) => void; add: (pts: unknown[]) => void };
+      if (typeof seriesAny.appendSamples === 'function') {
+        seriesAny.appendSamples({
+          xValues: sensorData.tsMs,
+          yValues: sensorData.val
+        });
+      } else {
+        const points = [];
+        for (let i = 0; i < sensorData.length; i++) {
+          points.push({ x: sensorData.tsMs[i], y: sensorData.val[i] });
         }
+        seriesAny.add(points);
       }
     }
-  } catch (err: unknown) {
-    if ((err as Error)?.name !== 'AbortError') {
-      console.error('Failed to stream telemetry:', err);
-    }
-  } finally {
-    isProgrammaticUpdate.value = false;
   }
-}
+});
 
-/**
- * Loads 30-day macro overview outline into the ZoomBandChart.
- */
-async function loadOverviewData() {
-  try {
-    const macroBatch = await fetchAm4Arrow({
-      sensorIds: targetSensorIds.value,
-      lbSec: props.lbSec,
-      ubSec: props.ubSec,
-      width: 1000
-    });
-
-    if (zoomBandChart && macroBatch.length > 0) {
-      const decomposed = decomposeBySensor(macroBatch);
-      for (const [sensorId, sensorData] of decomposed.entries()) {
-        const s = getOrCreateZoomBandSeries(sensorId);
-        if (s) {
-          s.clear();
-          const seriesAny = s as unknown as { appendSamples?: (args: unknown) => void; add: (pts: unknown[]) => void };
-          if (typeof seriesAny.appendSamples === 'function') {
-            seriesAny.appendSamples({
-              xValues: sensorData.tsMs,
-              yValues: sensorData.val
-            });
-          } else {
-            const points = [];
-            for (let i = 0; i < sensorData.length; i++) {
-              points.push({ x: sensorData.tsMs[i], y: sensorData.val[i] });
-            }
-            seriesAny.add(points);
-          }
+// Bind 30-day overview outline to ZoomBandChart
+onOverviewData((decomposed) => {
+  if (!zoomBandChart) return;
+  for (const [sensorId, sensorData] of decomposed.entries()) {
+    const s = getOrCreateZoomBandSeries(sensorId);
+    if (s) {
+      s.clear();
+      const seriesAny = s as unknown as { appendSamples?: (args: unknown) => void; add: (pts: unknown[]) => void };
+      if (typeof seriesAny.appendSamples === 'function') {
+        seriesAny.appendSamples({
+          xValues: sensorData.tsMs,
+          yValues: sensorData.val
+        });
+      } else {
+        const points = [];
+        for (let i = 0; i < sensorData.length; i++) {
+          points.push({ x: sensorData.tsMs[i], y: sensorData.val[i] });
         }
+        seriesAny.add(points);
       }
     }
-  } catch (err: unknown) {
-    if ((err as Error)?.name !== 'AbortError') {
-      console.warn('Failed to load ZoomBand overview outline:', err);
-    }
   }
-}
+});
 
-/**
- * Debounced semantic zoom navigator triggered by ZoomBandChart dragging or resizing.
- */
-const debouncedZoomNavigate = debounce((startMs: number, endMs: number) => {
-  if (isProgrammaticUpdate.value) return;
-
-  const newLbSec = Math.floor(startMs / 1000);
-  const newUbSec = Math.ceil(endMs / 1000);
-
-  if (newUbSec > newLbSec) {
-    currentLbSec.value = newLbSec;
-    currentUbSec.value = newUbSec;
-    loadData(newLbSec, newUbSec);
-  }
-}, 120);
-
-function handleZoomBandIntervalChange(startMs: number, endMs: number) {
-  debouncedZoomNavigate(startMs, endMs);
-}
-
-function resetToFullRange() {
-  currentLbSec.value = props.lbSec;
-  currentUbSec.value = props.ubSec;
-  if (zoomBandChart && typeof zoomBandChart.setInterval === 'function') {
-    isProgrammaticUpdate.value = true;
-    try {
-      zoomBandChart.setInterval(props.lbSec * 1000, props.ubSec * 1000);
-    } finally {
-      isProgrammaticUpdate.value = false;
-    }
-  }
-  loadData(props.lbSec, props.ubSec);
-}
-
-function refreshData() {
-  loadData(currentLbSec.value, currentUbSec.value);
-}
-
-function toggleLiveTail() {
-  if (isLiveEnabled.value) {
-    disconnectLiveTail();
-  } else {
-    connectLiveTail();
-    subscribeLiveTail(targetSensorIds.value);
-  }
-}
-
-// Live tail listener: real-time sample appending without full series re-render
+// Live tick listener
 onTick((tick) => {
   const s = getOrCreateSeries(tick.sensorId);
   if (s) {
@@ -374,6 +261,26 @@ onTick((tick) => {
   }
 });
 
+function handleZoomBandIntervalChange(startMs: number, endMs: number) {
+  zoomTo(startMs, endMs);
+}
+
+function resetToFullRange() {
+  if (zoomBandChart && typeof zoomBandChart.setInterval === 'function') {
+    isProgrammaticUpdate.value = true;
+    try {
+      zoomBandChart.setInterval(props.lbSec * 1000, props.ubSec * 1000);
+    } finally {
+      isProgrammaticUpdate.value = false;
+    }
+  }
+  resetToMacro();
+}
+
+function refreshData() {
+  refresh();
+}
+
 onMounted(() => {
   if (chartContainer.value) {
     try {
@@ -382,7 +289,6 @@ onMounted(() => {
       });
       chart.setTitle(chartTitle.value);
 
-      // Create ZoomBandChart mini-map linked to the main chart
       if (zoomBandContainer.value) {
         if (typeof (chart as any).createZoomBandChart === 'function') {
           zoomBandChart = (chart as any).createZoomBandChart({
@@ -399,24 +305,21 @@ onMounted(() => {
         }
 
         if (zoomBandChart && typeof zoomBandChart.onIntervalChange === 'function') {
-          zoomBandChart.onIntervalChange(handleZoomBandIntervalChange);
+          zoomBandChart.onIntervalChange((start: number, end: number) => {
+            zoomTo(start, end);
+          });
         }
       }
 
-      loadOverviewData();
-      loadData(currentLbSec.value, currentUbSec.value);
+      mountDashboard();
     } catch (e) {
       console.warn('WebGL / LightningChart initialization note:', e);
     }
   }
-
-  // Connect live WebSocket tail and subscribe active sensors
-  connectLiveTail();
-  subscribeLiveTail(targetSensorIds.value);
 });
 
 onUnmounted(() => {
-  disconnectLiveTail();
+  disposeDashboard();
   if (zoomBandChart && typeof zoomBandChart.dispose === 'function') {
     zoomBandChart.dispose();
     zoomBandChart = null;
@@ -433,14 +336,11 @@ watch(
   () => [props.sensorIds, props.sensorId, props.lbSec, props.ubSec],
   () => {
     if (!isProgrammaticUpdate.value) {
-      currentLbSec.value = props.lbSec;
-      currentUbSec.value = props.ubSec;
       if (chart) {
         chart.setTitle(chartTitle.value);
       }
-      loadOverviewData();
-      loadData(props.lbSec, props.ubSec);
-      subscribeLiveTail(targetSensorIds.value);
+      const targetIds = props.sensorIds && props.sensorIds.length > 0 ? props.sensorIds : [props.sensorId ?? 1];
+      dashboard.updateSensors(targetIds);
     }
   },
   { deep: true }
@@ -451,7 +351,7 @@ defineExpose({
   currentLbSec,
   currentUbSec,
   isProgrammaticUpdate,
-  loadData,
+  loadData: loadHistoricalData,
   resetToFullRange
 });
 </script>
