@@ -96,3 +96,6 @@ flowchart TD
     classDef frontier fill:#238636,stroke:#2ea043,color:#fff,font-weight:bold;
     classDef blocked fill:#21262d,stroke:#30363d,color:#8b949e;
 ```
+27. /clear
+28. /implement #8 진행 내용은 한글로 표시해
+29. /retro
