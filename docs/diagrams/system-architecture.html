@@ -67,21 +67,21 @@
     .diagram-card {
       background: #ffffff;
       border: 1px solid rgba(45, 49, 66, 0.12);
-      border-radius: 12px;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+      border-radius: 8px;
       padding: 1.5rem;
       overflow-x: auto;
     }
 
     svg {
       width: 100%;
-      min-width: 1120px;
+      min-width: 1140px;
       height: auto;
       display: block;
     }
 
     .legend {
       display: flex;
+      flex-wrap: wrap;
       gap: 1.5rem;
       margin-top: 1.2rem;
       font-size: 0.78rem;
@@ -102,18 +102,94 @@
       height: 10px;
       border-radius: 2px;
     }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: 1.15fr 1fr 0.95fr;
+      gap: 1.25rem;
+      margin-top: 1.5rem;
+    }
+
+    .card {
+      background: #ffffff;
+      border: 1px solid rgba(45, 49, 66, 0.12);
+      border-radius: 6px;
+      padding: 1.25rem;
+    }
+
+    .card-eyebrow {
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--color-muted);
+      margin-bottom: 0.4rem;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.8rem;
+    }
+
+    .card-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .card-dot.coral { background: var(--color-accent); }
+    .card-dot.link { background: var(--color-link); }
+    .card-dot.soft { background: var(--color-soft); }
+
+    .card h3 {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--color-ink);
+    }
+
+    .card ul {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .card li {
+      font-size: 0.82rem;
+      color: var(--color-muted);
+      line-height: 1.4;
+      padding-left: 0.9rem;
+      position: relative;
+    }
+
+    .card li::before {
+      content: "—";
+      position: absolute;
+      left: 0;
+      color: var(--color-soft);
+    }
+
+    @media (max-width: 900px) {
+      .summary-grid {
+        grid-template-columns: 1fr;
+      }
+    }
   </style>
 </head>
 <body>
   <div class="frame">
-    <p class="eyebrow">Enterprise Architecture · Deep Module Pattern</p>
+    <p class="eyebrow">Enterprise Architecture · Java 25 &amp; Spring Boot 4.1.2 Production Topology</p>
     <h1>End-to-End Realtime Telemetry Architecture</h1>
-    <p class="subtitle">50개 산업용 센서의 초당 고빈도 텔레메트리를 단일 Flink 파이프라인으로 처리하고, Apache Arrow IPC 스트리밍과 WebGL 링 버퍼를 통해 30일 매크로 및 밀리초 라이브 뷰를 실시간 제공하는 아키텍처</p>
+    <p class="subtitle">Java 25 (LTS) &amp; Spring Boot 4.1.2 기반 Gateway와 Apache Flink 1.20 독립형 토폴로지, ClickHouse 24.8 Zero-Copy ArrowStream 패스스루, Kafka-to-WebSocket 서브 100ms 라이브 테일 브리지 및 WebGL 링 버퍼를 결합한 프로덕션 아키텍처</p>
 
     <div class="diagram-card">
       <svg viewBox="0 0 1140 640" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="arch-title arch-desc">
         <title id="arch-title">Realtime Telemetry Service Architecture</title>
-        <desc id="arch-desc">End-to-end architecture diagram showing Ingestion, Flink Stream Processing, ClickHouse/Iceberg Storage, Spring Boot Gateway Engine, and Vue 3 WebGL visualization.</desc>
+        <desc id="arch-desc">Production end-to-end architecture diagram showing Ingestion, Flink 1.20 Job, ClickHouse and Iceberg Dual-Tier Storage, Java 25 Spring Boot 4.1.2 Gateway Engine, and Vue 3 WebGL dashboard.</desc>
 
         <defs>
           <pattern id="grid-dots" width="20" height="20" patternUnits="userSpaceOnUse">
@@ -138,151 +214,164 @@
         <!-- ================= TIER ZONES (Z-Order: Back) ================= -->
 
         <!-- Zone 1: Ingestion & Stream Processing -->
-        <rect x="30" y="40" width="220" height="560" rx="10"
+        <rect x="30" y="40" width="220" height="560" rx="8"
               fill="rgba(45,49,66,0.02)" stroke="rgba(45,49,66,0.12)" stroke-width="1"/>
-        <rect x="70" y="32" width="140" height="18" rx="3" fill="#ffffff" stroke="rgba(45,49,66,0.12)" stroke-width="0.8"/>
-        <text x="140" y="44" fill="#5a6580" font-size="8.5" font-weight="600" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.1em">INGESTION & STREAMING</text>
+        <rect x="70" y="32" width="140" height="18" rx="2" fill="#ffffff" stroke="rgba(45,49,66,0.12)" stroke-width="0.8"/>
+        <text x="140" y="44" fill="#5a6580" font-size="8.5" font-weight="600" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.1em">INGESTION &amp; STREAMING</text>
 
         <!-- Zone 2: Hybrid Dual-Tier Storage -->
-        <rect x="280" y="40" width="240" height="560" rx="10"
+        <rect x="280" y="40" width="240" height="560" rx="8"
               fill="rgba(45,49,66,0.02)" stroke="rgba(45,49,66,0.12)" stroke-width="1"/>
-        <rect x="330" y="32" width="140" height="18" rx="3" fill="#ffffff" stroke="rgba(45,49,66,0.12)" stroke-width="0.8"/>
+        <rect x="330" y="32" width="140" height="18" rx="2" fill="#ffffff" stroke="rgba(45,49,66,0.12)" stroke-width="0.8"/>
         <text x="400" y="44" fill="#5a6580" font-size="8.5" font-weight="600" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.1em">HYBRID STORAGE TIER</text>
 
         <!-- Zone 3: Gateway & Query Engine -->
-        <rect x="550" y="40" width="250" height="560" rx="10"
+        <rect x="550" y="40" width="250" height="560" rx="8"
               fill="rgba(45,49,66,0.02)" stroke="rgba(45,49,66,0.12)" stroke-width="1"/>
-        <rect x="605" y="32" width="140" height="18" rx="3" fill="#ffffff" stroke="rgba(45,49,66,0.12)" stroke-width="0.8"/>
-        <text x="675" y="44" fill="#5a6580" font-size="8.5" font-weight="600" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.1em">API GATEWAY & ENGINE</text>
+        <rect x="585" y="32" width="180" height="18" rx="2" fill="#ffffff" stroke="rgba(45,49,66,0.12)" stroke-width="0.8"/>
+        <text x="675" y="44" fill="#5a6580" font-size="8.5" font-weight="600" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">GATEWAY · JAVA 25 &amp; SB 4.1</text>
 
         <!-- Zone 4: WebGL Presentation Layer -->
-        <rect x="830" y="40" width="280" height="560" rx="10"
+        <rect x="830" y="40" width="280" height="560" rx="8"
               fill="rgba(45,49,66,0.02)" stroke="rgba(45,49,66,0.12)" stroke-width="1"/>
-        <rect x="890" y="32" width="160" height="18" rx="3" fill="#ffffff" stroke="rgba(45,49,66,0.12)" stroke-width="0.8"/>
+        <rect x="890" y="32" width="160" height="18" rx="2" fill="#ffffff" stroke="rgba(45,49,66,0.12)" stroke-width="0.8"/>
         <text x="970" y="44" fill="#5a6580" font-size="8.5" font-weight="600" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.1em">VUE 3 · WEBGL DASHBOARD</text>
 
         <!-- ================= CONNECTORS (Z-Order: Middle) ================= -->
 
         <!-- Ingestion to Flink Pipeline -->
-        <line x1="140" y1="130" x2="140" y2="180" stroke="#4f5d75" stroke-width="1.4" marker-end="url(#arrow-default)"/>
+        <line x1="140" y1="135" x2="140" y2="175" stroke="#4f5d75" stroke-width="1.4" marker-end="url(#arrow-default)"/>
 
-        <!-- Flink to 3 Storage Sinks (Fanned Elbow Connectors) -->
+        <!-- Flink to 3 Storage Sinks (Fanned Elbow Connectors with r=8) -->
         <!-- Flink to Iceberg Raw (Top) -->
-        <path d="M 230,220 H 265 Q 275,220 275,200 V 130 Q 275,110 285,110 H 300"
+        <path d="M 230,210 H 267 Q 275,210 275,202 V 120 Q 275,112 283,112 H 300"
               fill="none" stroke="#4f5d75" stroke-width="1.3" marker-end="url(#arrow-default)"/>
         <!-- Flink to ClickHouse 1m Rollup (Middle) -->
-        <path d="M 230,250 H 300"
-              fill="none" stroke="#4f5d75" stroke-width="1.3" marker-end="url(#arrow-default)"/>
+        <line x1="230" y1="247" x2="300" y2="247" stroke="#4f5d75" stroke-width="1.3" marker-end="url(#arrow-default)"/>
         <!-- Flink to ClickHouse 1h Rollup (Bottom) -->
-        <path d="M 230,280 H 265 Q 275,280 275,320 V 370 Q 275,390 285,390 H 300"
+        <path d="M 230,285 H 267 Q 275,285 275,293 V 379 Q 275,387 283,387 H 300"
               fill="none" stroke="#4f5d75" stroke-width="1.3" marker-end="url(#arrow-default)"/>
 
-        <!-- Ingestion WebSocket Tail directly to Spring Gateway -->
-        <path d="M 230,95 H 550 Q 560,95 560,110 V 510 Q 560,520 570,520 H 580"
-              fill="none" stroke="#2e5aa8" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arrow-link)"/>
+        <!-- Kafka to Live Tail Bridge (Clean Outer Corridor Route, Zero Crossings) -->
+        <path d="M 50,95 H 48 Q 40,95 40,103 V 462 Q 40,470 48,470 H 667 Q 675,470 675,478 V 480"
+              fill="none" stroke="#2e5aa8" stroke-width="1.3" stroke-dasharray="4,3" marker-end="url(#arrow-link)"/>
 
         <!-- Storage to TelemetryStorageEngine -->
         <!-- Iceberg to Engine (Cold micro-zoom scans) -->
-        <path d="M 500,110 H 535 Q 545,110 545,180 V 220 Q 545,240 555,240 H 575"
+        <path d="M 500,112 H 537 Q 545,112 545,120 V 212 Q 545,220 553,220 H 575"
               fill="none" stroke="#4f5d75" stroke-width="1.3" marker-end="url(#arrow-default)"/>
-        <!-- ClickHouse 1m to Engine -->
-        <path d="M 500,250 H 575"
-              fill="none" stroke="#4f5d75" stroke-width="1.3" marker-end="url(#arrow-default)"/>
-        <!-- ClickHouse 1h to Engine -->
-        <path d="M 500,390 H 535 Q 545,390 545,320 V 280 Q 545,260 555,260 H 575"
+        <!-- ClickHouse 1m to Engine (Zero-Copy FORMAT ArrowStream) -->
+        <line x1="500" y1="247" x2="575" y2="247" stroke="#4f5d75" stroke-width="1.3" marker-end="url(#arrow-default)"/>
+        <!-- ClickHouse 1h to Engine (30-Day Macro Outline) -->
+        <path d="M 500,387 H 537 Q 545,387 545,379 V 282 Q 545,274 553,274 H 575"
               fill="none" stroke="#4f5d75" stroke-width="1.3" marker-end="url(#arrow-default)"/>
 
         <!-- Spring Gateway to Frontend -->
         <!-- Binary Arrow IPC Stream (Historical / Zoom) -->
-        <path d="M 775,250 H 850"
-              fill="none" stroke="#bf4520" stroke-width="1.8" marker-end="url(#arrow-accent)"/>
-        <!-- WebSocket Live Tail (Sub-second ticks) -->
-        <path d="M 775,520 H 815 Q 825,520 825,440 V 370 Q 825,350 835,350 H 850"
+        <line x1="775" y1="250" x2="850" y2="250" stroke="#bf4520" stroke-width="1.8" marker-end="url(#arrow-accent)"/>
+        <!-- WebSocket Live Tail (Sub-100ms ticks) -->
+        <path d="M 775,520 H 817 Q 825,520 825,512 V 358 Q 825,350 833,350 H 850"
               fill="none" stroke="#2e5aa8" stroke-width="1.4" stroke-dasharray="4,3" marker-end="url(#arrow-link)"/>
 
         <!-- Frontend Internal Connections -->
         <!-- Composable to Buffer Pool -->
         <line x1="970" y1="365" x2="970" y2="405" stroke="#4f5d75" stroke-width="1.3" marker-end="url(#arrow-default)"/>
         <!-- Composable to TelemetryChart View -->
-        <line x1="970" y1="195" x2="970" y2="155" stroke="#bf4520" stroke-width="1.5" marker-end="url(#arrow-accent)"/>
+        <line x1="970" y1="190" x2="970" y2="155" stroke="#bf4520" stroke-width="1.5" marker-end="url(#arrow-accent)"/>
 
         <!-- ================= CONNECTOR LABELS ================= -->
         <!-- Flink to Sinks -->
-        <rect x="240" y="112" width="48" height="13" rx="2" fill="#ffffff" stroke="rgba(45,49,66,0.12)" stroke-width="0.7"/>
-        <text x="264" y="121" fill="#4f5d75" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle">PARQUET</text>
+        <rect x="238" y="105" width="54" height="14" rx="2" fill="#ffffff" stroke="rgba(45,49,66,0.12)" stroke-width="0.7"/>
+        <text x="265" y="115" fill="#4f5d75" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle">PARQUET</text>
 
-        <rect x="246" y="243" width="40" height="13" rx="2" fill="#ffffff" stroke="rgba(45,49,66,0.12)" stroke-width="0.7"/>
-        <text x="266" y="252" fill="#4f5d75" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle">ROLLUP</text>
+        <rect x="245" y="240" width="40" height="14" rx="2" fill="#ffffff" stroke="rgba(45,49,66,0.12)" stroke-width="0.7"/>
+        <text x="265" y="250" fill="#4f5d75" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle">ROLLUP</text>
 
-        <!-- Gateway Connectors -->
-        <rect x="785" y="235" width="55" height="14" rx="2" fill="#ffffff" stroke="rgba(191,69,32,0.3)" stroke-width="0.8"/>
-        <text x="812" y="245" fill="#bf4520" font-size="7.5" font-weight="600" font-family="'Geist Mono', monospace" text-anchor="middle">ARROW IPC</text>
+        <!-- Kafka to WebSocket Live Tail Label -->
+        <rect x="350" y="463" width="80" height="14" rx="2" fill="#ffffff" stroke="rgba(46,90,168,0.3)" stroke-width="0.8"/>
+        <text x="390" y="473" fill="#2e5aa8" font-size="7.5" font-weight="600" font-family="'Geist Mono', monospace" text-anchor="middle">KAFKA TAIL</text>
 
-        <rect x="785" y="390" width="55" height="14" rx="2" fill="#ffffff" stroke="rgba(46,90,168,0.3)" stroke-width="0.8"/>
-        <text x="812" y="400" fill="#2e5aa8" font-size="7.5" font-weight="600" font-family="'Geist Mono', monospace" text-anchor="middle">WS TICKS</text>
+        <!-- Storage to Gateway Zero-Copy Label -->
+        <rect x="505" y="240" width="65" height="14" rx="2" fill="#ffffff" stroke="rgba(45,49,66,0.12)" stroke-width="0.7"/>
+        <text x="537" y="250" fill="#4f5d75" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle">ZERO-COPY</text>
+
+        <!-- Gateway to Frontend Labels -->
+        <rect x="785" y="243" width="55" height="14" rx="2" fill="#ffffff" stroke="rgba(191,69,32,0.3)" stroke-width="0.8"/>
+        <text x="812" y="253" fill="#bf4520" font-size="7.5" font-weight="600" font-family="'Geist Mono', monospace" text-anchor="middle">ARROW IPC</text>
+
+        <rect x="797" y="403" width="56" height="14" rx="2" fill="#ffffff" stroke="rgba(46,90,168,0.3)" stroke-width="0.8"/>
+        <text x="825" y="413" fill="#2e5aa8" font-size="7.5" font-weight="600" font-family="'Geist Mono', monospace" text-anchor="middle">WS TICKS</text>
 
         <!-- ================= NODES (Z-Order: Top) ================= -->
 
         <!-- Node: Industrial Sensors & Kafka -->
-        <rect x="50" y="65" width="180" height="65" rx="6" fill="#ffffff" stroke="rgba(45,49,66,0.16)" stroke-width="1.2"/>
-        <rect x="58" y="73" width="45" height="12" rx="2" fill="rgba(79,93,117,0.1)"/>
-        <text x="80" y="82" fill="#5a6580" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" font-weight="600">INGRESS</text>
-        <text x="140" y="98" fill="#2d3142" font-size="11.5" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Kafka Topic</text>
-        <text x="140" y="115" fill="#4f5d75" font-size="8.5" font-family="'Geist Mono', monospace" text-anchor="middle">50 Sensors · Protobuf</text>
+        <rect x="50" y="65" width="180" height="70" rx="6" fill="#ffffff" stroke="rgba(45,49,66,0.16)" stroke-width="1.2"/>
+        <rect x="58" y="73" width="50" height="12" rx="2" fill="rgba(79,93,117,0.1)"/>
+        <text x="83" y="82" fill="#5a6580" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" font-weight="600">INGRESS</text>
+        <text x="140" y="98" fill="#2d3142" font-size="11.5" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Kafka (KRaft Mode)</text>
+        <text x="140" y="114" fill="#4f5d75" font-size="8.5" font-family="'Geist Mono', monospace" text-anchor="middle">iot.telemetry.raw · 128p</text>
+        <text x="140" y="127" fill="#5a6580" font-size="7.5" font-family="'Geist Mono', monospace" text-anchor="middle">50 Sensors · Protobuf</text>
 
-        <!-- Node: Flink Pipeline Topology -->
-        <rect x="50" y="180" width="180" height="130" rx="6" fill="#ffffff" stroke="rgba(45,49,66,0.16)" stroke-width="1.2"/>
-        <rect x="58" y="188" width="52" height="12" rx="2" fill="rgba(79,93,117,0.1)"/>
-        <text x="84" y="197" fill="#5a6580" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" font-weight="600">TOPOLOGY</text>
-        <text x="140" y="215" fill="#2d3142" font-size="11.5" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Apache Flink</text>
-        <text x="140" y="232" fill="#4f5d75" font-size="8.5" font-family="'Geist Mono', monospace" text-anchor="middle">UnifiedPipelineTopology</text>
-        <line x1="60" y1="245" x2="220" y2="245" stroke="rgba(45,49,66,0.08)" stroke-width="1"/>
-        <text x="140" y="263" fill="#2d3142" font-size="8.5" font-family="'Geist', sans-serif" text-anchor="middle">1x Deserialization &amp; Watermark</text>
-        <text x="140" y="280" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">Branching to 3 Parallel Sinks</text>
-        <text x="140" y="295" fill="#5a6580" font-size="7.5" font-family="'Geist Mono', monospace" text-anchor="middle">CPU/GC overhead -66%</text>
+        <!-- Node: Flink Pipeline Topology (Fat-JAR Standalone) -->
+        <rect x="50" y="175" width="180" height="140" rx="6" fill="#ffffff" stroke="rgba(45,49,66,0.16)" stroke-width="1.2"/>
+        <rect x="58" y="183" width="60" height="12" rx="2" fill="rgba(79,93,117,0.1)"/>
+        <text x="88" y="192" fill="#5a6580" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" font-weight="600">TOPOLOGY</text>
+        <text x="140" y="209" fill="#2d3142" font-size="11.5" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Apache Flink 1.20</text>
+        <text x="140" y="225" fill="#4f5d75" font-size="8.5" font-family="'Geist Mono', monospace" text-anchor="middle">TelemetryStreamJob (JAR)</text>
+        <line x1="60" y1="237" x2="220" y2="237" stroke="rgba(45,49,66,0.08)" stroke-width="1"/>
+        <text x="140" y="253" fill="#2d3142" font-size="8" font-family="'Geist', sans-serif" text-anchor="middle">Native KafkaSource&lt;byte[]&gt;</text>
+        <text x="140" y="269" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">1x Deserialization &amp; Watermark</text>
+        <text x="140" y="285" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">IcebergSink + ClickHouse Bulk</text>
+        <text x="140" y="300" fill="#5a6580" font-size="7.5" font-family="'Geist Mono', monospace" text-anchor="middle">CPU/GC Overhead -66%</text>
 
         <!-- Storage Node 1: Apache Iceberg (Cold Raw) -->
-        <rect x="300" y="70" width="200" height="80" rx="6" fill="#ffffff" stroke="rgba(45,49,66,0.16)" stroke-width="1.2"/>
-        <rect x="308" y="78" width="50" height="12" rx="2" fill="rgba(79,93,117,0.1)"/>
-        <text x="333" y="87" fill="#5a6580" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" font-weight="600">COLD TIER</text>
-        <text x="400" y="105" fill="#2d3142" font-size="11.5" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Apache Iceberg</text>
-        <text x="400" y="122" fill="#4f5d75" font-size="8.5" font-family="'Geist Mono', monospace" text-anchor="middle">bucket(32, sensor_id) · S3/MinIO</text>
-        <text x="400" y="138" fill="#5a6580" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">Parquet Micro-Zoom Scans</text>
+        <rect x="300" y="70" width="200" height="85" rx="6" fill="#ffffff" stroke="rgba(45,49,66,0.16)" stroke-width="1.2"/>
+        <rect x="308" y="78" width="55" height="12" rx="2" fill="rgba(79,93,117,0.1)"/>
+        <text x="335" y="87" fill="#5a6580" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" font-weight="600">COLD TIER</text>
+        <text x="400" y="104" fill="#2d3142" font-size="11.5" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Apache Iceberg</text>
+        <text x="400" y="121" fill="#4f5d75" font-size="8.5" font-family="'Geist Mono', monospace" text-anchor="middle">bucket(32, sensor_id) · MinIO</text>
+        <text x="400" y="136" fill="#5a6580" font-size="7.5" font-family="'Geist Mono', monospace" text-anchor="middle">Native IcebergSink.forRowData()</text>
+        <text x="400" y="149" fill="#5a6580" font-size="7.5" font-family="'Geist Mono', monospace" text-anchor="middle">DuckDB Micro-Zoom Cold Scans</text>
 
-        <!-- Storage Node 2: ClickHouse 1m Rollup (Intermediate) -->
-        <rect x="300" y="210" width="200" height="80" rx="6" fill="#ffffff" stroke="rgba(45,49,66,0.16)" stroke-width="1.2"/>
-        <rect x="308" y="218" width="55" height="12" rx="2" fill="rgba(79,93,117,0.1)"/>
-        <text x="335" y="227" fill="#5a6580" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" font-weight="600">WARM TIER</text>
-        <text x="400" y="245" fill="#2d3142" font-size="11.5" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">ClickHouse 1m Rollup</text>
-        <text x="400" y="262" fill="#4f5d75" font-size="8.5" font-family="'Geist Mono', monospace" text-anchor="middle">telemetry_rollup_1m</text>
-        <text x="400" y="278" fill="#5a6580" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">SummingMergeTree · 8-Scalar</text>
+        <!-- Storage Node 2: ClickHouse 24.8 1m Rollup (Warm Tier) -->
+        <rect x="300" y="205" width="200" height="85" rx="6" fill="#ffffff" stroke="rgba(45,49,66,0.16)" stroke-width="1.2"/>
+        <rect x="308" y="213" width="55" height="12" rx="2" fill="rgba(79,93,117,0.1)"/>
+        <text x="335" y="222" fill="#5a6580" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" font-weight="600">WARM TIER</text>
+        <text x="400" y="239" fill="#2d3142" font-size="11.5" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">ClickHouse 24.8 LTS</text>
+        <text x="400" y="256" fill="#4f5d75" font-size="8.5" font-family="'Geist Mono', monospace" text-anchor="middle">sensor_rollup_1m</text>
+        <text x="400" y="271" fill="#5a6580" font-size="7.5" font-family="'Geist Mono', monospace" text-anchor="middle">SummingMergeTree · 8-Scalar</text>
+        <text x="400" y="284" fill="#5a6580" font-size="7.5" font-family="'Geist Mono', monospace" text-anchor="middle">Live HTTP Client (:8123 / iot)</text>
 
-        <!-- Storage Node 3: ClickHouse 1h Rollup (Macro 30-Day) -->
-        <rect x="300" y="350" width="200" height="80" rx="6" fill="#ffffff" stroke="rgba(45,49,66,0.16)" stroke-width="1.2"/>
-        <rect x="308" y="358" width="55" height="12" rx="2" fill="rgba(79,93,117,0.1)"/>
-        <text x="335" y="367" fill="#5a6580" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" font-weight="600">MACRO TIER</text>
-        <text x="400" y="385" fill="#2d3142" font-size="11.5" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">ClickHouse 1h Rollup</text>
-        <text x="400" y="402" fill="#4f5d75" font-size="8.5" font-family="'Geist Mono', monospace" text-anchor="middle">telemetry_rollup_1h</text>
-        <text x="400" y="418" fill="#5a6580" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">30-Day Overview Outline</text>
+        <!-- Storage Node 3: ClickHouse 24.8 1h Rollup (Macro 30-Day) -->
+        <rect x="300" y="345" width="200" height="85" rx="6" fill="#ffffff" stroke="rgba(45,49,66,0.16)" stroke-width="1.2"/>
+        <rect x="308" y="353" width="55" height="12" rx="2" fill="rgba(79,93,117,0.1)"/>
+        <text x="335" y="362" fill="#5a6580" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" font-weight="600">MACRO TIER</text>
+        <text x="400" y="379" fill="#2d3142" font-size="11.5" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">ClickHouse 24.8 LTS</text>
+        <text x="400" y="396" fill="#4f5d75" font-size="8.5" font-family="'Geist Mono', monospace" text-anchor="middle">sensor_rollup_1h</text>
+        <text x="400" y="411" fill="#5a6580" font-size="7.5" font-family="'Geist Mono', monospace" text-anchor="middle">30-Day Macro Outline Engine</text>
+        <text x="400" y="424" fill="#5a6580" font-size="7.5" font-family="'Geist Mono', monospace" text-anchor="middle">FORMAT ArrowStream Direct</text>
 
         <!-- Gateway Node 1: TelemetryStorageEngine (FOCAL NODE 1 - ACCENT) -->
-        <rect x="575" y="170" width="200" height="160" rx="8" fill="#ffffff" stroke="#bf4520" stroke-width="1.8"/>
-        <rect x="583" y="178" width="75" height="14" rx="2" fill="rgba(191,69,32,0.1)"/>
-        <text x="620" y="188" fill="#bf4520" font-size="7.5" font-family="'Geist Mono', monospace" text-anchor="middle" font-weight="700">CORE DEEP SEAM</text>
-        <text x="675" y="212" fill="#2d3142" font-size="12" font-weight="700" font-family="'Geist', sans-serif" text-anchor="middle">TelemetryStorageEngine</text>
-        <text x="675" y="230" fill="#bf4520" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">Unified Query &amp; Stream</text>
-        <line x1="590" y1="242" x2="760" y2="242" stroke="rgba(191,69,32,0.2)" stroke-width="1"/>
-        <text x="675" y="260" fill="#2d3142" font-size="8.5" font-family="'Geist', sans-serif" text-anchor="middle">Single-Pass AM4 Downsampling</text>
-        <text x="675" y="278" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">DuckDB Parquet Micro-Scans</text>
-        <text x="675" y="296" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">Binary Arrow IPC Serializer</text>
-        <text x="675" y="314" fill="#5a6580" font-size="7.5" font-family="'Geist Mono', monospace" text-anchor="middle">Hidden SQL Dialects &amp; Routing</text>
+        <rect x="575" y="165" width="200" height="175" rx="8" fill="#ffffff" stroke="#bf4520" stroke-width="1.8"/>
+        <rect x="583" y="173" width="75" height="14" rx="2" fill="rgba(191,69,32,0.1)"/>
+        <text x="620" y="183" fill="#bf4520" font-size="7.5" font-family="'Geist Mono', monospace" text-anchor="middle" font-weight="700">CORE DEEP SEAM</text>
+        <text x="675" y="206" fill="#2d3142" font-size="12" font-weight="700" font-family="'Geist', sans-serif" text-anchor="middle">TelemetryStorageEngine</text>
+        <text x="675" y="224" fill="#bf4520" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">Java 25 · Spring Boot 4.1.2</text>
+        <line x1="590" y1="236" x2="760" y2="236" stroke="rgba(191,69,32,0.2)" stroke-width="1"/>
+        <text x="675" y="254" fill="#2d3142" font-size="8" font-family="'Geist', sans-serif" text-anchor="middle">Zero-Copy ArrowStream Pass-Through</text>
+        <text x="675" y="271" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">StreamUtils.copy(in, out) Direct Pipe</text>
+        <text x="675" y="288" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">Java 25 Virtual Threads Activated</text>
+        <text x="675" y="305" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">arrow-memory-unsafe:18.2.0</text>
+        <text x="675" y="322" fill="#5a6580" font-size="7.5" font-family="'Geist Mono', monospace" text-anchor="middle">Generational ZGC (-XX:+UseZGC)</text>
 
-        <!-- Gateway Node 2: WebSocket Live Gateway -->
-        <rect x="575" y="490" width="200" height="65" rx="6" fill="#ffffff" stroke="rgba(46,90,168,0.3)" stroke-width="1.2"/>
-        <rect x="583" y="498" width="60" height="12" rx="2" fill="rgba(46,90,168,0.1)"/>
-        <text x="613" y="507" fill="#2e5aa8" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" font-weight="600">LIVE SOCKET</text>
-        <text x="675" y="522" fill="#2d3142" font-size="11.5" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">TelemetryWebSocketHandler</text>
-        <text x="675" y="539" fill="#2e5aa8" font-size="8.5" font-family="'Geist Mono', monospace" text-anchor="middle">/ws/v1/telemetry/live</text>
+        <!-- Gateway Node 2: Dynamic Live Tail Bridge (WebSocket) -->
+        <rect x="575" y="480" width="200" height="85" rx="6" fill="#ffffff" stroke="rgba(46,90,168,0.3)" stroke-width="1.2"/>
+        <rect x="583" y="488" width="75" height="12" rx="2" fill="rgba(46,90,168,0.1)"/>
+        <text x="620" y="497" fill="#2e5aa8" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" font-weight="600">LIVE TAIL BRIDGE</text>
+        <text x="675" y="515" fill="#2d3142" font-size="11" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">TelemetryLiveTailConsumer</text>
+        <text x="675" y="530" fill="#2e5aa8" font-size="8.5" font-family="'Geist Mono', monospace" text-anchor="middle">&amp; WebSocketHandler (:8080)</text>
+        <line x1="590" y1="539" x2="760" y2="539" stroke="rgba(46,90,168,0.12)" stroke-width="0.8"/>
+        <text x="675" y="552" fill="#5a6580" font-size="7.5" font-family="'Geist Mono', monospace" text-anchor="middle">O(1) Sensor Filter · &lt;100ms Ticks</text>
 
         <!-- Frontend Node 1: Presentation UI Component -->
         <rect x="850" y="70" width="240" height="85" rx="6" fill="#ffffff" stroke="rgba(45,49,66,0.16)" stroke-width="1.2"/>
@@ -293,16 +382,17 @@
         <text x="970" y="138" fill="#5a6580" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">Main Chart + ZoomBand Mini-map</text>
 
         <!-- Frontend Node 2: useTelemetryDashboard (FOCAL NODE 2 - ACCENT) -->
-        <rect x="850" y="195" width="240" height="170" rx="8" fill="#ffffff" stroke="#bf4520" stroke-width="1.8"/>
-        <rect x="858" y="203" width="75" height="14" rx="2" fill="rgba(191,69,32,0.1)"/>
-        <text x="895" y="213" fill="#bf4520" font-size="7.5" font-family="'Geist Mono', monospace" text-anchor="middle" font-weight="700">HEADLESS SEAM</text>
-        <text x="970" y="235" fill="#2d3142" font-size="12" font-weight="700" font-family="'Geist', sans-serif" text-anchor="middle">useTelemetryDashboard</text>
-        <text x="970" y="252" fill="#bf4520" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">State &amp; Streaming Coordinator</text>
-        <line x1="865" y1="264" x2="1075" y2="264" stroke="rgba(191,69,32,0.2)" stroke-width="1"/>
-        <text x="970" y="282" fill="#2d3142" font-size="8.5" font-family="'Geist', sans-serif" text-anchor="middle">120ms Semantic Zoom Debounce</text>
-        <text x="970" y="299" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">isProgrammaticUpdate Sync Lock</text>
-        <text x="970" y="316" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">Flechette Zero-Copy Arrow Reader</text>
-        <text x="970" y="333" fill="#5a6580" font-size="7.5" font-family="'Geist Mono', monospace" text-anchor="middle">Headless Vitest (No Canvas Mock)</text>
+        <rect x="850" y="190" width="240" height="175" rx="8" fill="#ffffff" stroke="#bf4520" stroke-width="1.8"/>
+        <rect x="858" y="198" width="75" height="14" rx="2" fill="rgba(191,69,32,0.1)"/>
+        <text x="895" y="208" fill="#bf4520" font-size="7.5" font-family="'Geist Mono', monospace" text-anchor="middle" font-weight="700">HEADLESS SEAM</text>
+        <text x="970" y="230" fill="#2d3142" font-size="12" font-weight="700" font-family="'Geist', sans-serif" text-anchor="middle">useTelemetryDashboard</text>
+        <text x="970" y="247" fill="#bf4520" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">State &amp; Streaming Coordinator</text>
+        <line x1="865" y1="259" x2="1075" y2="259" stroke="rgba(191,69,32,0.2)" stroke-width="1"/>
+        <text x="970" y="277" fill="#2d3142" font-size="8.5" font-family="'Geist', sans-serif" text-anchor="middle">120ms Semantic Zoom Debounce</text>
+        <text x="970" y="294" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">isProgrammaticUpdate Sync Lock</text>
+        <text x="970" y="311" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">Flechette Zero-Copy Arrow Reader</text>
+        <text x="970" y="328" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">Automatic Fallback &amp; Reconnection</text>
+        <text x="970" y="345" fill="#5a6580" font-size="7.5" font-family="'Geist Mono', monospace" text-anchor="middle">Headless Vitest (No Canvas Mock)</text>
 
         <!-- Frontend Node 3: CircularTelemetryBufferPool -->
         <rect x="850" y="405" width="240" height="150" rx="6" fill="#ffffff" stroke="rgba(45,49,66,0.16)" stroke-width="1.2"/>
@@ -321,15 +411,62 @@
     <div class="legend">
       <div class="legend-item">
         <div class="legend-dot" style="background: #bf4520;"></div>
-        <span>Core Deep Module Seam (핵심 모듈)</span>
+        <span>Core Deep Module Seam (핵심 아키텍처 경계)</span>
       </div>
       <div class="legend-item">
         <div class="legend-dot" style="background: #2e5aa8;"></div>
-        <span>WebSocket Live Tail (실시간 통신)</span>
+        <span>Live Tail Bridge &amp; WebSocket (서브 100ms 실시간)</span>
       </div>
       <div class="legend-item">
         <div class="legend-dot" style="background: #4f5d75;"></div>
-        <span>Data Pipeline &amp; Storage (데이터 파이프라인)</span>
+        <span>Flink 1.20 &amp; Hybrid Storage (데이터 파이프라인)</span>
+      </div>
+    </div>
+
+    <!-- Editorial Summary Cards -->
+    <div class="summary-grid">
+      <div class="card">
+        <p class="card-eyebrow">SPEC 004 · COMPILER &amp; RUNTIME</p>
+        <div class="card-header">
+          <span class="card-dot coral"></span>
+          <h3>Java 25 &amp; Spring Boot 4.1.2 Baseline</h3>
+        </div>
+        <ul>
+          <li>Java 25 바이트코드 컴파일 타깃 (options.release = 25)</li>
+          <li>Spring Boot 4.1.2 GA &amp; Spring Framework 7 마이그레이션</li>
+          <li>Generational ZGC (-XX:+UseZGC) 도입으로 서브 밀리초 GC 일시정지</li>
+          <li>arrow-memory-unsafe:18.2.0 네이티브 할당자로 JDK 25 정합성 확보</li>
+          <li>Docker 베이스: eclipse-temurin:25-jre-alpine 컨테이너 정합성</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <p class="card-eyebrow">SPEC 003 · PRODUCTION BINDING</p>
+        <div class="card-header">
+          <span class="card-dot link"></span>
+          <h3>Live ClickHouse Zero-Copy &amp; Kafka Tail</h3>
+        </div>
+        <ul>
+          <li>ClickHouse 24.8 공식 클라이언트 기반 FORMAT ArrowStream 직접 파이프</li>
+          <li>StreamUtils.copy(in, out) 무할당 패스스루로 중간 Java 객체 오버헤드 0%</li>
+          <li>Spring WebMvc 가상 스레드 (Virtual Threads) 활성화로 대규모 동시성 지원</li>
+          <li>Kafka-to-WebSocket 동적 센서 구독 및 O(1) 필터링 (&lt;100ms 지연)</li>
+          <li>Flyway/DDL V1 자동화로 sensor_rollup_1m / 1h 테이블 초기화</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <p class="card-eyebrow">SPEC 003 · FULL-STACK SANDBOX</p>
+        <div class="card-header">
+          <span class="card-dot soft"></span>
+          <h3>Standalone Flink &amp; Docker Sandbox</h3>
+        </div>
+        <ul>
+          <li>TelemetryStreamJob 단독 실행형 Flink Fat-JAR 패키징 파이프라인</li>
+          <li>MinIO S3 연동 Native IcebergSink.forRowData() 콜드 파케이 적재</li>
+          <li>6개 서비스 Docker Compose (Kafka KRaft, CH, MinIO, Flink, Gateway, Web)</li>
+          <li>엔드투엔드 통합 스모크 테스트 (e2e-smoke-test) 자동 검증 통과</li>
+        </ul>
       </div>
     </div>
   </div>

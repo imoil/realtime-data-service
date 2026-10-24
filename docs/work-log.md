@@ -155,3 +155,4 @@ flowchart TD
 72. gh issue close 19 --comment "Completed Ticket 4.2: Upgrade Spring Boot Gateway to 4.1.2 & Spring Framework 7 (commit 4b55aa2)"
 73. gh issue close 20 --comment "Completed Ticket 4.3: Update Docker Runtime to JDK 25 & Verify Smoke Tests (commit 4b55aa2)"
 74. gh issue close 17 --comment "Completed Spec 004: JDK 25 & Spring Boot 4.x Migration (commit 4b55aa2)"
+75. /diagram-design (Update system architecture diagram with Spec 003 & Spec 004 production changes)
