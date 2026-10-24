@@ -131,3 +131,5 @@ flowchart TD
     classDef frontier fill:#238636,stroke:#2ea043,color:#fff,font-weight:bold;\n    classDef blocked fill:#21262d,stroke:#30363d,color:#8b949e;\n```
 49. /clear
 50. /implement #13
+51. gh issue close 13 --comment "Completed ClickHouse live client, zero-copy Arrow pass-through and virtual threads (commit 5805707)"
+52. /retro
