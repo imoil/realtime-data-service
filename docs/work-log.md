@@ -83,3 +83,16 @@ flowchart TD
 23. /retro
 24. /improve-codebase-architecture 회고 결과를 바탕으로 개선점을 도출해
 25. /to-spec 위 내용을 스펙으로 전환해 (#7)
+26. /to-tickets #7
+```mermaid
+flowchart TD
+    T8["#8 Ticket 2.1: Unified Backend TelemetryStorageEngine Deep Module\n(Frontier: 즉시 시작 가능)"]:::frontier
+    T9["#9 Ticket 2.2: Unified Flink Stream Processing Topology\n(Frontier: 즉시 시작 가능)"]:::frontier
+    T10["#10 Ticket 2.3: Headless useTelemetryDashboard Deep Composable\n(Frontier: 즉시 시작 가능)"]:::frontier
+    T11["#11 Ticket 2.4: Fixed-Budget Circular Ring Buffer Pooling\n(Blocked by #10)"]:::blocked
+
+    T10 -->|Blocks| T11
+
+    classDef frontier fill:#238636,stroke:#2ea043,color:#fff,font-weight:bold;
+    classDef blocked fill:#21262d,stroke:#30363d,color:#8b949e;
+```
