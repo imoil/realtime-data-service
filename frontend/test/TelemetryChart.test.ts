@@ -33,6 +33,16 @@ vi.mock('@arction/lcjs', () => {
 describe('TelemetryChart.vue', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+
+    const mockWs = {
+      readyState: 1,
+      send: vi.fn(),
+      close: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn()
+    };
+    // @ts-expect-error mock WebSocket in test
+    globalThis.WebSocket = vi.fn().mockImplementation(() => mockWs);
   });
 
   it('mounts and renders multi-sensor 30-day macro badge and header', async () => {
@@ -62,6 +72,7 @@ describe('TelemetryChart.vue', () => {
 
     expect(wrapper.text()).toContain('Synchronized Telemetry (2 Sensors)');
     expect(wrapper.text()).toContain('30-Day Macro (1h Rollup)');
+    expect(wrapper.text()).toContain('Live Tail');
     expect(wrapper.find('button.btn-primary').text()).toBe('Refresh');
   });
 });

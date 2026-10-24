@@ -6,14 +6,24 @@
         <span class="badge" :class="isMacroRange ? 'badge-macro' : 'badge-intermediate'">
           {{ isMacroRange ? '30-Day Macro (1h Rollup)' : 'Intermediate (1m Rollup)' }}
         </span>
+        <span class="live-badge" :class="{ 'live-online': isConnected, 'live-offline': !isConnected }">
+          ● {{ isConnected ? 'Live Tail (Active)' : 'Live Tail (Connecting)' }}
+        </span>
       </div>
-      <div class="stats-section" v-if="currentBatch">
+      <div class="stats-section" v-if="currentBatch || tickCount > 0">
         <span class="stat-item">Active Sensors: <strong>{{ activeSensorsCount }}</strong></span>
-        <span class="stat-item">Total Extrema Points: <strong>{{ currentBatch.length }}</strong></span>
-        <span class="stat-item">Viewport: <strong>{{ width }}px</strong></span>
+        <span class="stat-item">Total Historical Points: <strong>{{ currentBatch?.length ?? 0 }}</strong></span>
+        <span class="stat-item">Live Ticks Appended: <strong class="live-counter">{{ tickCount }}</strong></span>
         <span class="stat-item loading-text" v-if="isLoading">Streaming...</span>
       </div>
       <div class="actions-section">
+        <button
+          class="btn btn-secondary"
+          :class="{ 'btn-active': isLiveEnabled }"
+          @click="isLiveEnabled = !isLiveEnabled"
+        >
+          {{ isLiveEnabled ? 'Pause Live' : 'Resume Live' }}
+        </button>
         <button class="btn btn-primary" :disabled="isLoading" @click="loadData">
           {{ isLoading ? 'Loading...' : 'Refresh' }}
         </button>
@@ -32,6 +42,7 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { lightningChart, ChartXY, PointLineAreaSeries, ColorHEX, SolidFill } from '@arction/lcjs';
 import { useTelemetryStream } from '../composables/useTelemetryStream';
+import { useLiveTelemetryTail } from '../composables/useLiveTelemetryTail';
 
 const props = withDefaults(
   defineProps<{
@@ -88,6 +99,16 @@ const {
   fetchAm4Arrow
 } = useTelemetryStream();
 
+const {
+  isConnected,
+  tickCount,
+  isLiveEnabled,
+  connect: connectLiveTail,
+  disconnect: disconnectLiveTail,
+  subscribe: subscribeLiveTail,
+  onTick
+} = useLiveTelemetryTail();
+
 function getOrCreateSeries(sensorId: number): PointLineAreaSeries | null {
   if (!chart) return null;
   if (seriesMap.has(sensorId)) {
@@ -101,7 +122,6 @@ function getOrCreateSeries(sensorId: number): PointLineAreaSeries | null {
     (s as any).setName(`Sensor ${sensorId}`);
   }
 
-  // Assign distinct theme palette color
   const colorHex = SENSOR_PALETTE[sensorId % SENSOR_PALETTE.length];
   try {
     if (typeof (s as any).setStrokeStyle === 'function') {
@@ -167,6 +187,22 @@ async function loadData() {
   }
 }
 
+// Live tail listener: real-time sample appending without full series re-render
+onTick((tick) => {
+  const s = getOrCreateSeries(tick.sensorId);
+  if (s) {
+    const seriesAny = s as unknown as { appendSamples?: (args: unknown) => void; add: (pts: unknown[]) => void };
+    if (typeof seriesAny.appendSamples === 'function') {
+      seriesAny.appendSamples({
+        xValues: [tick.timestampMs],
+        yValues: [tick.value]
+      });
+    } else {
+      seriesAny.add([{ x: tick.timestampMs, y: tick.value }]);
+    }
+  }
+});
+
 onMounted(() => {
   if (chartContainer.value) {
     try {
@@ -180,9 +216,14 @@ onMounted(() => {
       console.warn('WebGL / LightningChart initialization note:', e);
     }
   }
+
+  // Connect live WebSocket tail and subscribe active sensors
+  connectLiveTail();
+  subscribeLiveTail(targetSensorIds.value);
 });
 
 onUnmounted(() => {
+  disconnectLiveTail();
   if (chart) {
     chart.dispose();
     chart = null;
@@ -198,6 +239,7 @@ watch(
         chart.setTitle(chartTitle.value);
       }
       loadData();
+      subscribeLiveTail(targetSensorIds.value);
     }
   },
   { deep: true }
@@ -251,6 +293,25 @@ watch(
   background-color: #238636;
 }
 
+.live-badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 2px 10px;
+  border-radius: 12px;
+}
+
+.live-online {
+  background-color: rgba(35, 134, 54, 0.2);
+  color: #3fb950;
+  border: 1px solid #238636;
+}
+
+.live-offline {
+  background-color: rgba(210, 153, 34, 0.2);
+  color: #d29922;
+  border: 1px solid #d29922;
+}
+
 .stats-section {
   display: flex;
   gap: 16px;
@@ -262,19 +323,42 @@ watch(
   color: #58a6ff;
 }
 
+.live-counter {
+  color: #3fb950 !important;
+}
+
 .loading-text {
   color: #d29922;
   font-weight: 600;
 }
 
+.actions-section {
+  display: flex;
+  gap: 8px;
+}
+
 .btn {
-  background-color: #238636;
-  color: #fff;
   border: 1px solid rgba(240, 246, 252, 0.1);
   padding: 6px 14px;
   border-radius: 6px;
   cursor: pointer;
   font-weight: 500;
+  font-size: 0.85rem;
+}
+
+.btn-primary {
+  background-color: #238636;
+  color: #fff;
+}
+
+.btn-secondary {
+  background-color: #21262d;
+  color: #c9d1d9;
+}
+
+.btn-active {
+  border-color: #3fb950;
+  color: #3fb950;
 }
 
 .btn:disabled {

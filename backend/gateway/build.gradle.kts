@@ -6,6 +6,7 @@ plugins {
 
 dependencies {
     implementation("org.springframework.boot:spring-boot-starter-web")
+    implementation("org.springframework.boot:spring-boot-starter-websocket")
     implementation("org.apache.arrow:arrow-vector:18.2.0")
     implementation("org.apache.arrow:arrow-memory-netty:18.2.0")
     implementation("com.clickhouse:clickhouse-jdbc:0.7.2")
