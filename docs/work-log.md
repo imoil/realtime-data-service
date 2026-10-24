@@ -151,3 +151,7 @@ flowchart TD
 68. /to-tickets #17
 69. /poteto-mode 프로젝트를 jdk25, springboot 4.x 기준으로 전환해
 70. Completed Spec 004: JDK 25 and Spring Boot 4.1.2 migration with full test green
+71. gh issue close 18 --comment "Completed Ticket 4.1: Upgrade Gradle Compilation Baseline to Java 25 (commit 4b55aa2)"
+72. gh issue close 19 --comment "Completed Ticket 4.2: Upgrade Spring Boot Gateway to 4.1.2 & Spring Framework 7 (commit 4b55aa2)"
+73. gh issue close 20 --comment "Completed Ticket 4.3: Update Docker Runtime to JDK 25 & Verify Smoke Tests (commit 4b55aa2)"
+74. gh issue close 17 --comment "Completed Spec 004: JDK 25 & Spring Boot 4.x Migration (commit 4b55aa2)"
