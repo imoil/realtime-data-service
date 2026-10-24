@@ -48,54 +48,53 @@ flowchart LR
 ```mermaid
 flowchart TD
     T1["#2 Ticket 1: Single-Sensor End-to-End Walking Skeleton\n(Frontier: 즉시 시작 가능)"]:::frontier
-    T2["#3 Ticket 2: Multi-Sensor 30-Day Macro AM4 Visualization"]:::blocked
-    T3["#5 Ticket 3: Cold Lakehouse Tiering & Micro-Zoom Parquet Scans"]:::blocked
-    T4["#4 Ticket 4: Sub-Second Live Telemetry via WebSocket Tail"]:::blocked
-    T5["#6 Ticket 5: Stream Resilience & Semantic Zoom Navigation"]:::blocked
+    T2["#3 Ticket 2: Multi-Sensor Aggregation & ClickHouse Rollup Sink\n(Blocked by #2)"]:::blocked
+    T3["#4 Ticket 3: Flechette Zero-Copy Arrow Ingestion & Circular Buffer Pooling\n(Blocked by #2)"]:::blocked
+    T4["#5 Ticket 4: Adaptive Window Sampling & Downsampling Engine\n(Blocked by #3, #4)"]:::blocked
+    T5["#6 Ticket 5: Full Ingestion Stress Testing & 5,000,000 Points Verification\n(Blocked by #4)"]:::blocked
 
     T1 -->|Blocks| T2
-    T2 -->|Blocks| T3
-    T1 -->|Blocks| T4
-    T2 -->|Blocks| T5
-    T3 -->|Blocks| T5
+    T1 -->|Blocks| T3
+    T2 -->|Blocks| T4
+    T3 -->|Blocks| T4
     T4 -->|Blocks| T5
 
-    classDef frontier fill:#238636,stroke:#2ea043,color:#fff,font-weight:bold;
-    classDef blocked fill:#21262d,stroke:#30363d,color:#8b949e;
+    classDef frontier fill:#238636,stroke:#2ea043,color:#fff,font-weight:bold;\n    classDef blocked fill:#21262d,stroke:#30363d,color:#8b949e;
 ```
-6. /ask-matt 티켓을 모두 생성했다면, 컨텍스트를 clear 해도 되나?
-7. /clear
-8. /implement #2
+6. /clear
+7. /implement #2
+8. gh issue close 2 --comment "Completed Walking Skeleton implementation (commit cdab48e)"
 9. /retro
-10. gh issue close 2
-11. /clear
-12. /implement #3
-13. gh issue close 3 --comment "Completed multi-sensor 30-day macro AM4 visualization (commit 2dc7ed1)"
+10. /clear
+11. /implement #3
+12. gh issue close 3 --comment "Completed Multi-Sensor Aggregation & ClickHouse Rollup Sink (commit bb4d994)"
+13. /retro
 14. /clear
-15. /implement #4 진행 및 결과는 한글로 출력해
-16. /retro
-17. gh issue close 4 --comment "Completed sub-second live telemetry via WebSocket tail with full end-to-end verification (commit 4ddc668)"
+15. /implement #4
+16. gh issue close 4 --comment "Completed Flechette Zero-Copy Ingestion & Circular Buffer Pooling (commit e436440)"
+17. /retro
 18. /clear
 19. /implement #5
-20. /retro
-21. /clear
-22. /implement #6
-23. /retro
-24. /improve-codebase-architecture 회고 결과를 바탕으로 개선점을 도출해
-25. /to-spec 위 내용을 스펙으로 전환해 (#7)
-26. /to-tickets #7
+20. gh issue close 5 --comment "Completed Adaptive Window Sampling & Downsampling Engine (commit be94ca9)"
+21. /retro
+22. /clear
+23. /implement #6
+24. gh issue close 6 --comment "Completed Full Ingestion Stress Testing & 5,000,000 Points Verification (commit 1789c67)"
+25. /retro
+26. gh issue close 1 --comment "Completed Spec 001: 5M IoT Telemetry Pipeline & Dashboard Walking Skeleton"
+27. /clear
+28. /to-tickets #7
 ```mermaid
 flowchart TD
-    T8["#8 Ticket 2.1: Unified Backend TelemetryStorageEngine Deep Module\n(Frontier: 즉시 시작 가능)"]:::frontier
+    T8["#8 Ticket 2.1: Unified TelemetryStorageEngine Deep Module\n(Frontier: 즉시 시작 가능)"]:::frontier
     T9["#9 Ticket 2.2: Unified Flink Stream Processing Topology\n(Frontier: 즉시 시작 가능)"]:::frontier
     T10["#10 Ticket 2.3: Headless useTelemetryDashboard Deep Composable\n(Frontier: 즉시 시작 가능)"]:::frontier
-    T11["#11 Ticket 2.4: Fixed-Budget Circular Ring Buffer Pooling\n(Blocked by #10)"]:::blocked
+    T11["#11 Ticket 2.4: Fixed-Budget Circular Buffer Pooling with Strict Memory Ceiling\n(Blocked by #10)"]:::blocked
 
     T10 -->|Blocks| T11
 
-    classDef frontier fill:#238636,stroke:#2ea043,color:#fff,font-weight:bold;\n    classDef blocked fill:#21262d,stroke:#30363d,color:#8b949e;\n```
-27. /clear
-28. /implement #8 진행 내용은 한글로 표시해
+    classDef frontier fill:#238636,stroke:#2ea043,color:#fff,font-weight:bold;\n    classDef blocked fill:#21262d,stroke:#30363d,color:#8b949e;
+```
 29. /retro
 30. gh issue close 8 --comment "Completed unified TelemetryStorageEngine deep module refactoring (commit 131a05a)"
 31. /clear
@@ -128,7 +127,8 @@ flowchart TD
     T14 -->|Blocks| T16
     T15 -->|Blocks| T16
 
-    classDef frontier fill:#238636,stroke:#2ea043,color:#fff,font-weight:bold;\n    classDef blocked fill:#21262d,stroke:#30363d,color:#8b949e;\n```
+    classDef frontier fill:#238636,stroke:#2ea043,color:#fff,font-weight:bold;\n    classDef blocked fill:#21262d,stroke:#30363d,color:#8b949e;
+```
 49. /clear
 50. /implement #13
 51. gh issue close 13 --comment "Completed ClickHouse live client, zero-copy Arrow pass-through and virtual threads (commit 5805707)"
@@ -138,3 +138,6 @@ flowchart TD
 55. gh issue close 14 --comment "Completed Flink standalone job packaging and real ingestion sinks (commit e3048b4)"
 56. /retro
 57. /clear
+58. /poteto-mode #15 티켓 구현해
+59. gh issue close 15 --comment "Completed Kafka-to-WebSocket dynamic live tail bridge with O(1) early filter and virtual thread dispatch"
+60. /retro

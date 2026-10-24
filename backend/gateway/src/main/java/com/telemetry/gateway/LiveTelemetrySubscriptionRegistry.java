@@ -31,12 +31,18 @@ public class LiveTelemetrySubscriptionRegistry {
         Set<Integer> currentSensors = sessionToSensors.get(sessionId);
         if (currentSensors != null) {
             currentSensors.removeAll(sensorIds);
+            if (currentSensors.isEmpty()) {
+                sessionToSensors.remove(sessionId);
+            }
         }
 
         for (int sensorId : sensorIds) {
             Set<WebSocketSession> sessions = sensorToSessions.get(sensorId);
             if (sessions != null) {
                 sessions.remove(session);
+                if (sessions.isEmpty()) {
+                    sensorToSessions.remove(sensorId);
+                }
             }
         }
     }
@@ -48,6 +54,9 @@ public class LiveTelemetrySubscriptionRegistry {
                 Set<WebSocketSession> sessions = sensorToSessions.get(sensorId);
                 if (sessions != null) {
                     sessions.removeIf(s -> s.getId().equals(sessionId));
+                    if (sessions.isEmpty()) {
+                        sensorToSessions.remove(sensorId);
+                    }
                 }
             }
         }
@@ -59,5 +68,25 @@ public class LiveTelemetrySubscriptionRegistry {
 
     public Set<Integer> getSubscribedSensors(String sessionId) {
         return sessionToSensors.getOrDefault(sessionId, Collections.emptySet());
+    }
+
+    /**
+     * O(1) check if any active WebSocket client is currently subscribed to this sensor.
+     * Crucial for filtering 5,000,000 raw sensors in the Kafka consumer thread with zero overhead.
+     */
+    public boolean hasActiveSubscribers(int sensorId) {
+        Set<WebSocketSession> sessions = sensorToSessions.get(sensorId);
+        return sessions != null && !sessions.isEmpty();
+    }
+
+    /**
+     * Returns all sensor IDs that currently have at least one active subscriber.
+     */
+    public Set<Integer> getActiveSensorIds() {
+        return Collections.unmodifiableSet(sensorToSessions.keySet());
+    }
+
+    public int getActiveSessionCount() {
+        return sessionToSensors.size();
     }
 }
