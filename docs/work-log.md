@@ -60,9 +60,7 @@ flowchart TD
     T3 -->|Blocks| T5
     T4 -->|Blocks| T5
 
-    classDef frontier fill:#238636,stroke:#2ea043,color:#fff,font-weight:bold;
-    classDef blocked fill:#21262d,stroke:#30363d,color:#8b949e;
-```
+    classDef frontier fill:#238636,stroke:#2ea043,color:#fff,font-weight:bold;\n    classDef blocked fill:#21262d,stroke:#30363d,color:#8b949e;\n```
 6. /ask-matt 티켓을 모두 생성했다면, 컨텍스트를 clear 해도 되나?
 7. /clear
 8. /implement #2
@@ -93,9 +91,7 @@ flowchart TD
 
     T10 -->|Blocks| T11
 
-    classDef frontier fill:#238636,stroke:#2ea043,color:#fff,font-weight:bold;
-    classDef blocked fill:#21262d,stroke:#30363d,color:#8b949e;
-```
+    classDef frontier fill:#238636,stroke:#2ea043,color:#fff,font-weight:bold;\n    classDef blocked fill:#21262d,stroke:#30363d,color:#8b949e;\n```
 27. /clear
 28. /implement #8 진행 내용은 한글로 표시해
 29. /retro
@@ -112,3 +108,4 @@ flowchart TD
 40. /implement #11
 41. gh issue close 11 --comment "Completed fixed-budget circular ring buffer pooling with strict memory ceiling (commit ac5e4cd)"
 42. /retro
+43. /clear
