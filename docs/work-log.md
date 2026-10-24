@@ -99,3 +99,7 @@ flowchart TD
 27. /clear
 28. /implement #8 진행 내용은 한글로 표시해
 29. /retro
+30. gh issue close 8 --comment "Completed unified TelemetryStorageEngine deep module refactoring (commit 131a05a)"
+31. /clear
+32. /implement #9
+33. /retro
