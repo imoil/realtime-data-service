@@ -6,8 +6,12 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * Dynamic query router that targets iot.sensor_rollup_1h for macro ranges (>7d)
- * and iot.sensor_rollup_1m for intermediate ranges.
+ * Dynamic query router that targets:
+ * - iot.sensor_iceberg_raw for micro-zoom ranges (ΔT <= 6h)
+ *     - raw measurements when ΔT <= 2W seconds
+ *     - single-scan AM4 downsampling when 2W seconds < ΔT <= 6h
+ * - iot.sensor_rollup_1m for intermediate ranges (6h < ΔT <= 7d)
+ * - iot.sensor_rollup_1h for macro ranges (> 7d)
  */
 @Component
 public class TelemetryQueryRouter {
@@ -22,40 +26,93 @@ public class TelemetryQueryRouter {
 
         String targetTable = timeRange.targetTable();
         boolean isMacro = timeRange.isMacro30Day();
+        boolean isRaw = timeRange.isMicroZoomIceberg() && timeRange.isRawIceberg(width);
 
         String sensorListStr = sensorIds.stream()
                 .map(String::valueOf)
                 .collect(Collectors.joining(", "));
 
-        String sqlQuery = String.format("""
-                SELECT
-                    toUInt32(sensor_id) AS sensor_id,
-                    toFloat64(point.1)  AS ts_ms,
-                    toFloat64(point.2)  AS val
-                FROM (
-                    SELECT
-                        sensor_id,
-                        round(%d * (toUnixTimestamp(bucket_ts) - %d) / (%d - %d)) AS pixel_bin,
-                        arrayDistinct(arraySort(x -> x.1, [
-                            (toUnixTimestamp64Milli(min(first_ts)),   argMin(first_val, first_ts)),
-                            (toUnixTimestamp64Milli(argMin(min_val_ts, min_val)), min(min_val)),
-                            (toUnixTimestamp64Milli(argMax(max_val_ts, max_val)), max(max_val)),
-                            (toUnixTimestamp64Milli(max(last_ts)),    argMax(last_val, last_ts))
-                        ])) AS am4_points
-                    FROM %s
-                    WHERE sensor_id IN (%s)
-                      AND bucket_ts >= toDateTime(%d)
-                      AND bucket_ts <= toDateTime(%d)
-                    GROUP BY sensor_id, pixel_bin
-                )
-                ARRAY JOIN am4_points AS point
-                ORDER BY sensor_id ASC, ts_ms ASC
-                FORMAT ArrowStream;
-                """,
-                width, timeRange.lbSec(), timeRange.ubSec(), timeRange.lbSec(),
-                targetTable, sensorListStr, timeRange.lbSec(), timeRange.ubSec()
-        );
+        String sqlQuery;
+        if (timeRange.isMicroZoomIceberg()) {
+            long lbMs = timeRange.lbSec() * 1000L;
+            long ubMs = timeRange.ubSec() * 1000L;
 
-        return new QueryRoutingDecision(targetTable, isMacro, sqlQuery, timeRange, sensorIds, width);
+            if (isRaw) {
+                sqlQuery = String.format("""
+                        SELECT
+                            toUInt32(sensor_id) AS sensor_id,
+                            toFloat64(ts_ms)    AS ts_ms,
+                            toFloat64(val)      AS val
+                        FROM %s
+                        WHERE sensor_id IN (%s)
+                          AND ts_ms >= %d
+                          AND ts_ms <= %d
+                        ORDER BY sensor_id ASC, ts_ms ASC
+                        FORMAT ArrowStream;
+                        """,
+                        targetTable, sensorListStr, lbMs, ubMs
+                );
+            } else {
+                sqlQuery = String.format("""
+                        SELECT
+                            toUInt32(sensor_id) AS sensor_id,
+                            toFloat64(point.1)  AS ts_ms,
+                            toFloat64(point.2)  AS val
+                        FROM (
+                            SELECT
+                                sensor_id,
+                                round(%d * (ts_ms / 1000 - %d) / (%d - %d)) AS pixel_bin,
+                                arrayDistinct(arraySort(x -> x.1, [
+                                    (toUnixTimestamp64Milli(toDateTime64(min(ts_ms)/1000, 3)), argMin(val, ts_ms)),
+                                    (toUnixTimestamp64Milli(toDateTime64(argMin(ts_ms, val)/1000, 3)), min(val)),
+                                    (toUnixTimestamp64Milli(toDateTime64(argMax(ts_ms, val)/1000, 3)), max(val)),
+                                    (toUnixTimestamp64Milli(toDateTime64(max(ts_ms)/1000, 3)), argMax(val, ts_ms))
+                                ])) AS am4_points
+                            FROM %s
+                            WHERE sensor_id IN (%s)
+                              AND ts_ms >= %d
+                              AND ts_ms <= %d
+                            GROUP BY sensor_id, pixel_bin
+                        )
+                        ARRAY JOIN am4_points AS point
+                        ORDER BY sensor_id ASC, ts_ms ASC
+                        FORMAT ArrowStream;
+                        """,
+                        width, timeRange.lbSec(), timeRange.ubSec(), timeRange.lbSec(),
+                        targetTable, sensorListStr, lbMs, ubMs
+                );
+            }
+        } else {
+            sqlQuery = String.format("""
+                    SELECT
+                        toUInt32(sensor_id) AS sensor_id,
+                        toFloat64(point.1)  AS ts_ms,
+                        toFloat64(point.2)  AS val
+                    FROM (
+                        SELECT
+                            sensor_id,
+                            round(%d * (toUnixTimestamp(bucket_ts) - %d) / (%d - %d)) AS pixel_bin,
+                            arrayDistinct(arraySort(x -> x.1, [
+                                (toUnixTimestamp64Milli(min(first_ts)),   argMin(first_val, first_ts)),
+                                (toUnixTimestamp64Milli(argMin(min_val_ts, min_val)), min(min_val)),
+                                (toUnixTimestamp64Milli(argMax(max_val_ts, max_val)), max(max_val)),
+                                (toUnixTimestamp64Milli(max(last_ts)),    argMax(last_val, last_ts))
+                            ])) AS am4_points
+                        FROM %s
+                        WHERE sensor_id IN (%s)
+                          AND bucket_ts >= toDateTime(%d)
+                          AND bucket_ts <= toDateTime(%d)
+                        GROUP BY sensor_id, pixel_bin
+                    )
+                    ARRAY JOIN am4_points AS point
+                    ORDER BY sensor_id ASC, ts_ms ASC
+                    FORMAT ArrowStream;
+                    """,
+                    width, timeRange.lbSec(), timeRange.ubSec(), timeRange.lbSec(),
+                    targetTable, sensorListStr, timeRange.lbSec(), timeRange.ubSec()
+            );
+        }
+
+        return new QueryRoutingDecision(targetTable, isMacro, sqlQuery, timeRange, sensorIds, width, isRaw);
     }
 }

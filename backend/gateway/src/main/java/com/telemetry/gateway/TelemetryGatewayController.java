@@ -65,6 +65,7 @@ public class TelemetryGatewayController {
                 .header("X-Accel-Buffering", "no")
                 .header(HttpHeaders.CACHE_CONTROL, "no-transform")
                 .header("X-Target-Table", routing.targetTable())
+                .header("X-Query-Mode", routing.isRaw() ? "raw" : "am4")
                 .body(responseBody);
     }
 }

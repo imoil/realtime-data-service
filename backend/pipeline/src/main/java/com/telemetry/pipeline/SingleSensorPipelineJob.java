@@ -8,9 +8,9 @@ import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindo
 import java.time.Duration;
 
 /**
- * End-to-end Flink streaming pipeline for telemetry rollups.
+ * End-to-end Flink streaming pipeline for telemetry rollups and Iceberg raw lakehouse sink.
  * Ingests Protobuf telemetry stream, applies event-time tumbling windows (1m and 1h),
- * and computes 8-scalar extrema rollups.
+ * and routes hash-bucketed raw streams for Iceberg Parquet writes.
  */
 public class SingleSensorPipelineJob {
 
@@ -50,5 +50,28 @@ public class SingleSensorPipelineJob {
                 .window(TumblingEventTimeWindows.of(Duration.ofHours(1)))
                 .aggregate(new SensorRollup1hExtremaAggregator())
                 .name("1HourExtremaAggregator");
+    }
+
+    /**
+     * Builds the raw stream partitioned by bucket(32, sensor_id)
+     * for direct Iceberg Parquet lakehouse ingestion.
+     */
+    public static DataStream<TelemetryRecord> buildIcebergRawStream(
+            StreamExecutionEnvironment env,
+            DataStream<byte[]> rawProtobufStream
+    ) {
+        WatermarkStrategy<TelemetryRecord> watermarkStrategy = WatermarkStrategy
+                .<TelemetryRecord>forBoundedOutOfOrderness(Duration.ofSeconds(5))
+                .withTimestampAssigner((record, timestamp) -> record.getTimestampMs());
+
+        IcebergSinkHelper sinkHelper = new IcebergSinkHelper();
+
+        DataStream<TelemetryRecord> deserialized = rawProtobufStream
+                .map(TelemetryRecord::fromProtobufBytes)
+                .name("ProtobufDeserializer")
+                .assignTimestampsAndWatermarks(watermarkStrategy)
+                .name("WatermarkAssigner");
+
+        return sinkHelper.routeByBucket(deserialized);
     }
 }
