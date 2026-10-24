@@ -147,3 +147,7 @@ flowchart TD
 64. /retro
 65. gh issue close 12 --comment "Completed Spec 003: Production Infrastructure Binding & Live Cluster Readiness"
 66. /clear
+67. /to-spec Spec 004: JDK 25 & Spring Boot 4.x Migration (#17)
+68. /to-tickets #17
+69. /poteto-mode 프로젝트를 jdk25, springboot 4.x 기준으로 전환해
+70. Completed Spec 004: JDK 25 and Spring Boot 4.1.2 migration with full test green

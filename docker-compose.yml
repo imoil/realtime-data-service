@@ -141,7 +141,7 @@ services:
         parallelism.default: 4
 
   # ---------------------------------------------------------------------------
-  # 5. Spring Boot Gateway (Java 21 Virtual Threads & Direct Arrow Stream)
+  # 5. Spring Boot Gateway (Java 25 Virtual Threads & Direct Arrow Stream)
   # ---------------------------------------------------------------------------
   gateway:
     build:

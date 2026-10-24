@@ -1,6 +1,6 @@
 # Real-Time IoT Telemetry Ingestion & Visualization Service
 
-High-performance real-time IoT telemetry service capable of streaming and rendering up to 5,000,000 data points smoothly using Apache Arrow, Apache Flink, ClickHouse, Apache Kafka, Spring Boot 3.4 (Java 21 Virtual Threads), and Vue 3 (LightningChart JS / WebGL).
+High-performance real-time IoT telemetry service capable of streaming and rendering up to 5,000,000 data points smoothly using Apache Arrow, Apache Flink, ClickHouse, Apache Kafka, Spring Boot 4.x (Java 25 Virtual Threads), and Vue 3 (LightningChart JS / WebGL).
 
 ---
 
@@ -29,7 +29,7 @@ flowchart LR
 - **Protobuf & Kafka KRaft**: Ingests high-frequency sensor measurements across 128 partitions with zero Zookeeper overhead.
 - **Apache Flink**: Computes tumbling 1-minute and 1-hour rollups while dual-sinking raw measurements to MinIO S3 and rollups to ClickHouse.
 - **ClickHouse Server**: Serves fast analytical queries with native `FORMAT ArrowStream` binary streaming directly to HTTP responses.
-- **Spring Boot Gateway**: Uses Java 21 Virtual Threads and non-blocking streaming responses (`StreamingResponseBody`), routing queries between raw, 1m, and 1h rollups.
+- **Spring Boot Gateway**: Uses Java 25 Virtual Threads and non-blocking streaming responses (`StreamingResponseBody`), routing queries between raw, 1m, and 1h rollups.
 - **Dynamic Live Tail Bridge**: Filters incoming Kafka ticks with $O(1)$ early drop and dispatches to subscribed WebSocket clients.
 - **Vue 3 & LightningChart JS**: Zero-copy deserialization with `@uwdata/flechette` into TypedArrays and fixed-budget circular ring buffers, rendering millions of points at 60 FPS.
 
