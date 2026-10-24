@@ -81,3 +81,5 @@ flowchart TD
 21. /clear
 22. /implement #6
 23. /retro
+24. /improve-codebase-architecture 회고 결과를 바탕으로 개선점을 도출해
+25. /to-spec 위 내용을 스펙으로 전환해 (#7)
