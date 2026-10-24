@@ -141,3 +141,4 @@ flowchart TD
 58. /poteto-mode #15 티켓 구현해
 59. gh issue close 15 --comment "Completed Kafka-to-WebSocket dynamic live tail bridge with O(1) early filter and virtual thread dispatch"
 60. /retro
+61. /clear
