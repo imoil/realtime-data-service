@@ -93,7 +93,9 @@ flowchart TD
 
     T10 -->|Blocks| T11
 
-    classDef frontier fill:#238636,stroke:#2ea043,color:#fff,font-weight:bold;\n    classDef blocked fill:#21262d,stroke:#30363d,color:#8b949e;\n```
+    classDef frontier fill:#238636,stroke:#2ea043,color:#fff,font-weight:bold;
+    classDef blocked fill:#21262d,stroke:#30363d,color:#8b949e;
+```
 27. /clear
 28. /implement #8 진행 내용은 한글로 표시해
 29. /retro
@@ -104,6 +106,7 @@ flowchart TD
 34. gh issue close 9 --comment "Completed unified Flink stream processing topology refactoring (commit c4dcc2c)"
 35. /clear
 36. /implement #10
-37. gh issue close 10 --comment "Completed headless useTelemetryDashboard deep composable (commit eddbd06)"
-38. /retro
+37. /retro
+38. gh issue close 10 --comment "Completed headless useTelemetryDashboard deep composable (commit eddbd06)"
 39. /clear
+40. /implement #11

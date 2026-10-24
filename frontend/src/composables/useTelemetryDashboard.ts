@@ -1,6 +1,10 @@
 import { ref, computed } from 'vue';
 import { useTelemetryStream, type SensorSeries } from './useTelemetryStream';
 import { useLiveTelemetryTail } from './useLiveTelemetryTail';
+import {
+  CircularTelemetryBuffer,
+  CircularTelemetryBufferPool
+} from '../utils/CircularTelemetryBuffer';
 
 export interface DashboardOptions {
   sensorId?: number;
@@ -8,6 +12,8 @@ export interface DashboardOptions {
   lbSec?: number;
   ubSec?: number;
   width?: number;
+  bufferCapacity?: number;
+  maxBufferSensors?: number;
 }
 
 /**
@@ -35,6 +41,12 @@ export function useTelemetryDashboard(options: DashboardOptions = {}) {
 
   const rawSensorIds = ref(options.sensorIds && options.sensorIds.length > 0 ? options.sensorIds : [options.sensorId ?? 1]);
   const width = ref(options.width ?? 1920);
+
+  // Fixed-budget circular ring buffer pool for continuous 24/7 live monitoring
+  const bufferPool = new CircularTelemetryBufferPool({
+    maxSensors: options.maxBufferSensors ?? 50,
+    capacityPerSensor: options.bufferCapacity ?? 10_000
+  });
 
   const activeSensors = computed(() => {
     if (rawSensorIds.value && rawSensorIds.value.length > 0) {
@@ -77,6 +89,11 @@ export function useTelemetryDashboard(options: DashboardOptions = {}) {
     subscribe: subscribeLiveTail,
     onTick
   } = useLiveTelemetryTail();
+
+  // Pipe incoming live WebSocket ticks automatically into the circular buffer pool
+  onTick((tick) => {
+    bufferPool.push(tick.sensorId, tick.timestampMs, tick.value);
+  });
 
   // Callbacks for visual consumers
   const historicalDataCallbacks: Array<(data: Map<number, SensorSeries>) => void> = [];
@@ -190,6 +207,14 @@ export function useTelemetryDashboard(options: DashboardOptions = {}) {
     loadHistoricalData();
   }
 
+  function pushLiveSample(sensorId: number, timestampMs: number, value: number): void {
+    bufferPool.push(sensorId, timestampMs, value);
+  }
+
+  function getLiveBuffer(sensorId: number): CircularTelemetryBuffer {
+    return bufferPool.getOrCreateBuffer(sensorId);
+  }
+
   function mountDashboard() {
     loadOverviewData();
     loadHistoricalData();
@@ -220,6 +245,7 @@ export function useTelemetryDashboard(options: DashboardOptions = {}) {
     isConnected,
     tickCount,
     isLiveEnabled,
+    bufferPool,
 
     // Actions
     zoomTo,
@@ -231,6 +257,8 @@ export function useTelemetryDashboard(options: DashboardOptions = {}) {
     loadOverviewData,
     mountDashboard,
     disposeDashboard,
+    pushLiveSample,
+    getLiveBuffer,
 
     // Subscriptions
     onHistoricalData,
