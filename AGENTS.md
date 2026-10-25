@@ -20,4 +20,4 @@ Original legacy repository lives at `C:\Users\imoil\repo\formula-evaluator-servi
 
 ### Tooling on Windows Sandbox
 
-Gradle execution requires `BypassSandbox: true` due to Windows loopback socket restrictions on daemon IPC. Prefer `write_file` over shell commands for directory creation.
+Gradle execution and remote git/gh operations require `BypassSandbox: true` due to Windows loopback socket restrictions on daemon IPC and credential network access. Prefer `write_file` over shell commands for directory creation. In PowerShell sessions, chain sequential commands using `;` instead of `&&`.

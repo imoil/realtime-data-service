@@ -46,12 +46,13 @@
   - **RocksDB 상태 최적화**: 10,000개 센서의 30분 슬라이딩 윈도우(1,800초)를 나이브한 `ListState` 대신 `CompactCircularDoubleBuffer` 기반의 `ValueState<byte[]>`로 단일 바이트 배열 압축 저장하여 힙 메모리 할당(GC Churn)을 0건으로 제거하고 상태 용량을 360배 감축.
   - **워터마크 스톨 방지**: 룰 브로드캐스트 스트림의 유휴 상태로 인한 지연을 방지하기 위해, 수식 평가자 출력 이후 단일 스트림 상에서 사후 워터마크(`forBoundedOutOfOrderness(Duration.ofSeconds(5))`)를 일괄 할당.
 
-### **2.3. 데이터 프로토콜 및 센서 일련번호 해석기 (Ticket #24)**
+### **2.3. 데이터 프로토콜 및 센서 일련번호 해석기 (Ticket #24, #30 반영)**
 - **결정**: 전송 포맷은 **Protobuf**로 표준화하되, `formula-core`의 단일 일련번호 체계(`SensorSerialResolver`)를 Flink 디시리얼라이저에 통합한다.
 - **근거 및 최적화**:
-  - **하위 호환성**: 기존 `TelemetryRecord`의 1~3번 태그(`sensor_id`, `timestamp_ms`, `value`)를 100% 바이너리 호환 상태로 유지하고, 선택 태그로 `device_id`, `sensor_index`를 확장.
-  - **대역폭 절감**: 다중 센서를 보유한 장치를 위해 `DeviceBatchPayload`를 추가하여 카프카 인그레스 대역폭을 **56.7% 절감**.
+  - **하위 호환성**: 기존 `TelemetryRecord`의 1~3번 태그(`sensor_id`, `timestamp_ms`, `value`)를 100% 바이너리 호환 상태로 유지하고, 선택 태그로 `state`, `device_id`, `sensor_index`, `device_numeric_id`(태그 4~7)를 확장.
+  - **대역폭 절감**: 다중 센서를 보유한 장치를 위해 `DeviceBatchPayload`를 추가하여 카프카 인그레스 대역폭을 **56.7% 이상(100센서 배치 기준 59.6%) 절감**.
   - **Zero-Allocation Two-Level Resolver**: 장치명 조회를 배치당 1회로 한정하고, 내부 센서 인덱스를 원시 `int[] serialMap`으로 인덱싱하여 **2ns 미만 L1 CPU 캐시 직접 조회(힙 객체 생성 0건)** 달성.
+  - **Protobuf 스키마 위치 및 제로 카피 코덱 아키텍처**: 스키마 계약은 루트의 `proto/telemetry.proto`로 표준화하되, 500만 건/초 고주파 스트리밍에서 객체 생성(GC Churn)을 방지하기 위해 `protoc` 자동 생성에 의한 무거운 Protobuf `Message` 객체 대신 `CodedInputStream`/`CodedOutputStream` 기반의 직접 와이어 인코딩/디코딩(`TelemetryRecord`, `DeviceBatchPayload`)을 표준 채택한다.
 
 ### **2.4. 메타데이터 스토리지: Oracle 19c 데이터베이스 유지 (Ticket #25)**
 - **결정**: 기존 운영 인프라의 표준 RDBMS인 **Oracle 19c Enterprise**를 센서 레지스트리 및 시퀀스 관리 저장소로 유지한다.

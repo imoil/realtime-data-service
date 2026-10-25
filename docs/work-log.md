@@ -470,4 +470,8 @@ Retro 실행 후 변경 사항은 검토 한 다음 반영해 달라고 요구�
    - 2번(GitHub Actions Backend CI) -> .github/workflows/backend-ci.yml
    - 4번(AviatorScript Maven 좌표 명시) -> docs/specs/spec-005-formula-evaluator-service-merge.md & docs/adr/0002
    - 5번(상속 시 빌더 은닉 방지 및 의존성 규칙) -> CODING_STANDARDS.md
-8. Issue #30 (Ticket 5.2: Protobuf 배치 스키마 확장 및 2단계 SensorSerialResolver) 구현, /code-review 수행, PR #36 자동 병합 및 이슈 종료 완료.
+8. /poteto-mode gh issues #30을 구현해. 구현이 끝나면 PR을 올리기 전에 /code-review 스킬을 실행하여 결과를 검토한 후 변경이 필요하면 수정한 뒤 PR을 올려줘. 자동 병합이 가능하면 자동 병합하고 자동 병합이 불가능하면 알려줘. 자동 병합 후에는 구현된 이슈 티켓은 Close 해줘. 전체 spec은 issue #28을 참고해.
+```
+Issue #30 (Ticket 5.2: Protobuf 배치 스키마 확장 및 2단계 SensorSerialResolver) 구현, /code-review 수행, PR #36 자동 병합 및 이슈 종료 완료.
+```
+9. /retro 한글로 설명
