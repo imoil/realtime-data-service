@@ -61,10 +61,14 @@
 
 ### **2.5. 게이트웨이 아키텍처: Spring Boot 4.x 및 공통 엔진 모듈 (Ticket #26)**
 - **결정**: 수식 엔진 코어는 `backend:engine` 공통 서브모듈로 분리하고, REST API 서빙 계층은 `backend:gateway`로 통합한다.
-- **근거**:
-  - 관심사 분리(SoC): `backend:engine`은 Spring 의존성이 없는 순수 Java 라이브러리로 구성하여 Flink 워커(`backend:pipeline`)와 REST 게이트웨이(`backend:gateway`)가 컴파일 타임에 공통 공유.
-  - 가상 스레드 동시성: Spring Boot 4.0의 Java 25 가상 스레드(`spring.threads.virtual.enabled=true`)를 통해 비차단 대규모 온디멘드 수식 시뮬레이션 처리.
-  - 시맨틱 줌 어댑터: `ClickHouseDataSourceAdapter`가 쿼리 범위에 따라 `sensor_rollup_1m` 및 원시 테이블을 자동 라우팅.
+- **근거 및 세부 구현 사양 (Ticket #29 반영)**:
+  - **관심사 분리(SoC) 및 무의존성(Zero-Dependency)**: `backend:engine`은 Spring Context(`@Component`, `@Service`, `@Configuration`)뿐만 아니라 Lombok 등 모든 컴파일 타임 어노테이션 프로세서를 완전히 배제한 순수 Java 25 라이브러리로 구축한다. 이를 통해 Flink 워커(`backend:pipeline`) 클래스패스 오염을 원천 차단하고 순수 Java 팩토리(`RuleEngineConfig`)와 불변/빌더 POJO로 안정성을 보장한다.
+  - **라이브러리 좌표 확정**: AviatorScript 5.9.0 JIT 컴파일러 아티팩트는 공식 신규 좌표인 `io.github.aviatorscript:aviator:5.9.0`을 표준으로 채택한다.
+  - **듀얼 네임스페이스 호환 레이아웃**: 신규 코드는 `com.telemetry.engine` 패키지 체계를 따르되, 기존 `formula-evaluator-service` 기반 코드 및 이전 호출자와의 100% 바이너리 호환을 위해 `com.imoil.formula.domain.*` 및 `com.imoil.formula.engine.*` 호환 래퍼를 서브프로젝트에 동시 제공한다.
+  - **제로 할당 30분 슬라이딩 윈도우 사양**: 16바이트 패킹 바이너리 헤더(`short capacity`, `short count`, `int head`, `long lastTimestampMs`)와 연속 `double[]` 배열로 구성된 `CompactCircularDoubleBuffer`를 표준 채택하고, `asListView(requestedSize)`를 통해 힙 메모리 복사 없이 내부 바이트를 직접 참조하는 지연 인덱싱 `AbstractList<Double>` 뷰를 제공하여 1,800개 틱(30분) 집계 시 힙 GC Churn을 0건으로 제거한다.
+  - **다단계 보안 샌드박스 파이프라인**: `ExpressionValidator`는 (1) 길이 제한(<=500자) $\rightarrow$ (2) 허용 문자 정규식 화이트리스트 $\rightarrow$ (3) 금지 키워드/클래스/루프문 차단 $\rightarrow$ (4) 단독 대입 연산자 차단의 4단계 파이프라인을 통과한 수식만 컴파일 캐시에 진입하도록 강제한다.
+  - **가상 스레드 동시성**: Spring Boot 4.0의 Java 25 가상 스레드(`spring.threads.virtual.enabled=true`)를 통해 비차단 대규모 온디멘드 수식 시뮬레이션 처리.
+  - **시맨틱 줌 어댑터**: `ClickHouseDataSourceAdapter`가 쿼리 범위에 따라 `sensor_rollup_1m` 및 원시 테이블을 자동 라우팅.
 
 ### **2.6. 프론트엔드 UI: 탭 기반 워크스페이스 + 우측 분할 프리뷰 (Ticket #27)**
 - **결정**: 프론트엔드는 **Variant A(상단 탭 바 기반 통합 워크스페이스)**를 기본 채택하고, 수식 스튜디오 및 시뮬레이션 탭에 **우측 분할 라이브 프리뷰(Right Split Waveform Preview)**를 결합한다.
