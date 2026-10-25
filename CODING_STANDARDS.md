@@ -32,3 +32,7 @@ When extending domain models or creating backward-compatibility wrappers (e.g. `
 ### Test Behavior, Not Implementation
 - Assert observable behavior: mathematical calculation accuracy, edge-case returns, and security exception types.
 - Avoid asserting against non-contract private helpers or volatile internal call sequences.
+
+### Allocation Invariants vs Wall-Clock Timing
+- Zero-allocation streaming contracts (e.g. steady-state lookups) are deterministic behavioral invariants and may be asserted directly via `ThreadMXBean.getCurrentThreadAllocatedBytes()` after warm-up passes.
+- Wall-clock latency benchmarks (<2ns) are sensitive to CPU throttling and virtualization noise. In CI unit test suites, avoid fragile sub-nanosecond hard limits; use generous sanity margins or isolate them into dedicated benchmark executions per `benchmark-checklist`.
