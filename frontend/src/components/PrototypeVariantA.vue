@@ -62,9 +62,10 @@
       </div>
     </div>
 
-    <!-- Tab 2: Formula Studio & DAG -->
+    <!-- Tab 2: Formula Studio & DAG with Right Split Preview -->
     <div v-else-if="currentTab === 'formulas'" class="tab-content formula-studio">
-      <div class="studio-grid">
+      <div class="studio-split-grid">
+        <!-- Column 1: Formula Library -->
         <div class="studio-sidebar">
           <div class="section-title">Defined Dynamic Formulas</div>
           <div class="formula-cards">
@@ -84,6 +85,7 @@
           </div>
         </div>
 
+        <!-- Column 2: Formula Editor & DAG -->
         <div class="studio-main">
           <div class="editor-header">
             <h3>Formula Editor & AviatorScript Sandbox</h3>
@@ -117,6 +119,36 @@
               <div class="dag-node out-node">
                 <span class="node-type">Derived Sink</span>
                 <span class="node-id">ClickHouse (SN_{{ selectedFormula.serialNumber }})</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Column 3: Right-Hand Live Split Waveform Preview -->
+        <div class="studio-preview-pane">
+          <div class="preview-header">
+            <h4>📊 Right Split Preview</h4>
+            <span class="preview-badge">Live Sub-Second</span>
+          </div>
+          <div class="preview-chart-box">
+            <div class="mock-waveform-container">
+              <svg class="waveform-svg" viewBox="0 0 300 120">
+                <path d="M 0,60 Q 30,10 60,60 T 120,60 T 180,60 T 240,60 T 300,60" fill="none" stroke="#388bfd" stroke-width="2" />
+                <path d="M 0,70 Q 30,30 60,70 T 120,70 T 180,70 T 240,70 T 300,70" fill="none" stroke="#bc8cff" stroke-width="2" stroke-dasharray="4" />
+              </svg>
+              <div class="waveform-legend">
+                <span class="legend-item"><span class="dot blue"></span> SN_10001 (Raw)</span>
+                <span class="legend-item"><span class="dot purple"></span> SN_{{ selectedFormula.serialNumber }} (Derived)</span>
+              </div>
+            </div>
+            <div class="preview-stats">
+              <div class="stat-box">
+                <span class="stat-lbl">Output Rate</span>
+                <span class="stat-val">1 tick/sec</span>
+              </div>
+              <div class="stat-box">
+                <span class="stat-lbl">Flink JIT Latency</span>
+                <span class="stat-val">&lt; 0.15 ms</span>
               </div>
             </div>
           </div>
@@ -396,22 +428,22 @@ const SAMPLE_SENSORS = [
   height: 580px;
 }
 
-/* Formula Studio */
-.studio-grid {
+/* Formula Studio Split Grid */
+.studio-split-grid {
   display: grid;
-  grid-template-columns: 360px 1fr;
-  gap: 20px;
+  grid-template-columns: 280px 1fr 340px;
+  gap: 18px;
 }
 
-.studio-sidebar, .studio-main, .sim-panel {
+.studio-sidebar, .studio-main, .studio-preview-pane, .sim-panel {
   background: #161b22;
   border: 1px solid #30363d;
   border-radius: 8px;
-  padding: 20px;
+  padding: 18px;
 }
 
 .section-title {
-  font-size: 1.1rem;
+  font-size: 1rem;
   font-weight: 600;
   color: #f0f6fc;
   margin-bottom: 12px;
@@ -427,7 +459,7 @@ const SAMPLE_SENSORS = [
   background: #0d1117;
   border: 1px solid #30363d;
   border-radius: 6px;
-  padding: 12px;
+  padding: 10px;
   cursor: pointer;
   transition: all 0.15s ease;
 }
@@ -458,7 +490,7 @@ const SAMPLE_SENSORS = [
 
 .formula-code {
   font-family: monospace;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   color: #58a6ff;
 }
 
@@ -466,7 +498,13 @@ const SAMPLE_SENSORS = [
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 14px;
+}
+
+.editor-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  color: #f0f6fc;
 }
 
 .status-badge.valid {
@@ -474,7 +512,7 @@ const SAMPLE_SENSORS = [
   color: #3fb950;
   border: 1px solid #238636;
   font-size: 0.75rem;
-  padding: 4px 8px;
+  padding: 3px 8px;
   border-radius: 6px;
 }
 
@@ -484,38 +522,43 @@ const SAMPLE_SENSORS = [
   border: 1px solid #30363d;
   color: #58a6ff;
   font-family: monospace;
-  font-size: 1rem;
-  padding: 12px;
+  font-size: 0.95rem;
+  padding: 10px;
   border-radius: 6px;
   margin-top: 6px;
   box-sizing: border-box;
 }
 
 .hint {
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   color: #8b949e;
-  margin-top: 8px;
+  margin-top: 6px;
 }
 
 .dag-preview {
-  margin-top: 24px;
-  padding-top: 20px;
+  margin-top: 18px;
+  padding-top: 16px;
   border-top: 1px solid #30363d;
+}
+
+.dag-preview h4 {
+  margin: 0 0 10px;
+  font-size: 0.85rem;
+  color: #c9d1d9;
 }
 
 .dag-flow {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   flex-wrap: wrap;
-  margin-top: 12px;
 }
 
 .dag-node {
   background: #0d1117;
   border: 1px solid #30363d;
   border-radius: 6px;
-  padding: 8px 14px;
+  padding: 6px 12px;
   display: flex;
   flex-direction: column;
 }
@@ -539,14 +582,108 @@ const SAMPLE_SENSORS = [
 }
 
 .node-id {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   font-weight: 600;
   color: #f0f6fc;
 }
 
 .dag-edge {
   color: #8b949e;
-  font-size: 1.2rem;
+  font-size: 1.1rem;
+}
+
+/* Right Split Preview Pane */
+.studio-preview-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.preview-header h4 {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #f0f6fc;
+}
+
+.preview-badge {
+  background: rgba(56, 139, 253, 0.2);
+  color: #58a6ff;
+  font-size: 0.7rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.preview-chart-box {
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.waveform-svg {
+  width: 100%;
+  height: 100px;
+  background: #161b22;
+  border-radius: 4px;
+}
+
+.waveform-legend {
+  display: flex;
+  justify-content: space-around;
+  font-size: 0.75rem;
+  color: #8b949e;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.dot.blue {
+  background: #388bfd;
+}
+
+.dot.purple {
+  background: #bc8cff;
+}
+
+.preview-stats {
+  display: flex;
+  justify-content: space-between;
+  border-top: 1px solid #21262d;
+  padding-top: 8px;
+}
+
+.stat-box {
+  display: flex;
+  flex-direction: column;
+}
+
+.stat-lbl {
+  font-size: 0.7rem;
+  color: #8b949e;
+}
+
+.stat-val {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #3fb950;
 }
 
 /* Simulation View */
@@ -596,10 +733,22 @@ const SAMPLE_SENSORS = [
 }
 
 /* Registry View */
+.registry-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.registry-header h3 {
+  margin: 0;
+  color: #f0f6fc;
+}
+
 .registry-table {
   width: 100%;
   border-collapse: collapse;
-  margin-top: 16px;
+  margin-top: 12px;
   font-size: 0.85rem;
 }
 
