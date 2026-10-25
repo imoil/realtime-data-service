@@ -74,7 +74,7 @@ flowchart TD
 
 | 모듈 경로 | 유형 | 주요 기술 | 책임 및 구성 |
 | :--- | :--- | :--- | :--- |
-| **`backend:engine`** | Java Library | Java 25, AviatorScript 5.9.0 | 순수 수식 컴파일러, `ExpressionValidator`(AST 화이트리스트 샌드박스), 윈도우 함수(`window_avg`, `window_max`), 도메인 엔티티(`DynamicRule`, `SensorItem`). **Spring 의존성 없음**. |
+| **`backend:engine`** | Java Library | Java 25, AviatorScript 5.9.0 (`io.github.aviatorscript:aviator:5.9.0`) | 순수 수식 컴파일러, `ExpressionValidator`(AST 화이트리스트 샌드박스), 윈도우 함수(`window_avg`, `window_max`), 도메인 엔티티(`DynamicRule`, `SensorItem`). **Spring 의존성 없음**. |
 | **`backend:pipeline`**| Flink Job | Flink 1.20, RocksDB JNI, Protobuf | 통합 Flink 스트리밍 토폴로지. Protobuf 디코더, 2단계 `SensorSerialResolver`, AviatorScript 룰 브로드캐스트 프로세서, 이중 싱크. |
 | **`backend:gateway`** | Spring Boot App| Spring Boot 4.0, Java 25 Virtual Threads, OJDBC11 | Oracle JPA 센서 레지스트리, 카프카 이벤트 발행기, 온디멘드 수식 평가 REST API, ClickHouse 제로 카피 Arrow 스트리머, WebSocket 라이브 테일 브릿지. |
 | **`frontend`** | Web App | Vue 3, LightningChart JS, Flechette | 탭 기반 워크스페이스 SPA. 실시간 5M WebGL 렌더링, 수식 에디터/DAG/우측 분할 프리뷰, 온디멘드 시뮬레이터, 센서 레지스트리 관리. |
@@ -215,7 +215,8 @@ message DeviceBatchPayloadProto {
 
 ### **티켓 1: 공통 `backend:engine` 모듈 구축 및 AviatorScript 샌드박스 포팅**
 - `formula-engine` 코드를 `backend:engine` 서브프로젝트로 이전.
-- `ExpressionValidator`, `WindowAvgFunction`, `WindowMaxFunction`, `RuleEngineService` 구현.
+- AviatorScript Maven 좌표 `io.github.aviatorscript:aviator:5.9.0` 적용 및 Spring/Lombok 의존성 배제.
+- `ExpressionValidator`, `WindowAvgFunction`, `WindowMaxFunction`, `RuleEngineService`, `CompactCircularDoubleBuffer` 구현.
 - Java 25 단위 테스트 통과 및 Gradle 멀티 모듈 바인딩.
 
 ### **티켓 2: Protobuf 배치 스키마 확장 및 2단계 `SensorSerialResolver` 구현**

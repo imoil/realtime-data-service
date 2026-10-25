@@ -13,3 +13,11 @@ Canonical triage roles mapped 1:1 (`needs-triage`, `needs-info`, `ready-for-agen
 ### Domain docs
 
 Single-context layout (`GLOSSARY.md` and `docs/adr/` at the root). See `docs/agents/domain.md`.
+
+### Merger reference (Temporary for Spec 005)
+
+Original legacy repository lives at `C:\Users\imoil\repo\formula-evaluator-service`. Research branches and technical evaluation notes live on `research/*` and `docs/research/`.
+
+### Tooling on Windows Sandbox
+
+Gradle execution requires `BypassSandbox: true` due to Windows loopback socket restrictions on daemon IPC. Prefer `write_file` over shell commands for directory creation.

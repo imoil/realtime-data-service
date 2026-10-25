@@ -7,7 +7,7 @@
   - pstack
   - 검토
     - 포니테일 (Ponytail) : 중복 개발 방지
-        https://github.com/DietrichGebert/pon...
+        https://github.com/DietrichGebert/ponytail
     - 케이브맨 (Caveman) : 불필요한 출력 미사여구 방지
         https://github.com/JuliusBrussee/caveman
     - RTK : 터미널 결과 정리하여 요약
@@ -19,7 +19,7 @@
     - 세레나 (Serena) : AI 가 고칠 함수를 바로 찾아가는 기능
         https://github.com/oraios/serena
     - 토큰 옵티마이저 (Token Optimizer) : 설정 정리
-        https://github.com/alexgreensh/token-...
+        https://github.com/alexgreensh/token-optimizer
 1. initial skills
   - /setup-matt-pocock-skills
   - /setup-pstack
@@ -459,5 +459,14 @@ flowchart TD
     style T52 fill:#238636,color:#fff
 ```
 4. /clear
-5. /poteto-mode gh issues #29 를 구현해. 전체 spec 은 issue #28을 참고해.
-6. gh issue close 29 --comment "Completed Ticket 5.1: Core Formula Engine Module & Security Sandbox (PR #35 merged into main)"
+5. /poteto-mode gh issues #29를 구현해. 구현이 끝나면 PR을 올린 후 자동 병합이 가능하면 자동 병합하고 자동 병합이 불가능하면 알려줘. 자동 병합 후에는 구현된 이슈 티켓은 Close 해줘. 전체 spec은 issue #28을 참고해. 
+6. /retro
+```
+Retro 실행 후 변경 사항은 검토 한 다음 반영해 달라고 요구하지 않으면 반영하지 않는다.
+반드시 내용을 검토 후 반영 여부를 결정하여 요청하도록 한다.
+```
+7. 회고 제안 사항 반영:
+   - 1번(임시 원본 저장소 경로) & 3번(Windows 샌드박스 실행 가이드) -> AGENTS.md
+   - 2번(GitHub Actions Backend CI) -> .github/workflows/backend-ci.yml
+   - 4번(AviatorScript Maven 좌표 명시) -> docs/specs/spec-005-formula-evaluator-service-merge.md & docs/adr/0002
+   - 5번(상속 시 빌더 은닉 방지 및 의존성 규칙) -> CODING_STANDARDS.md
