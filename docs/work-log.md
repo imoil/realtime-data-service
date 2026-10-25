@@ -470,3 +470,4 @@ Retro 실행 후 변경 사항은 검토 한 다음 반영해 달라고 요구�
    - 2번(GitHub Actions Backend CI) -> .github/workflows/backend-ci.yml
    - 4번(AviatorScript Maven 좌표 명시) -> docs/specs/spec-005-formula-evaluator-service-merge.md & docs/adr/0002
    - 5번(상속 시 빌더 은닉 방지 및 의존성 규칙) -> CODING_STANDARDS.md
+8. Issue #30 (Ticket 5.2: Protobuf 배치 스키마 확장 및 2단계 SensorSerialResolver) 구현, /code-review 수행, PR #36 자동 병합 및 이슈 종료 완료.
